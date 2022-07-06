@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"conventionalCommits.autoCommit": false,
+		"git.autofetch": true,
+		"conventionalCommits.lineBreak": "\\n"
+	},
+	"extensions": {
+		"recommendations": [
+			"yzhang.markdown-all-in-one",
+			"davidanson.vscode-markdownlint",
+			"mhutchie.git-graph",
+			"vivaxy.vscode-conventional-commits"
+		]
+	}
+}
