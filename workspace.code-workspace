@@ -7,7 +7,9 @@
 	"settings": {
 		"conventionalCommits.autoCommit": false,
 		"git.autofetch": true,
-		"conventionalCommits.lineBreak": "\\n"
+		"conventionalCommits.lineBreak": "\\n",
+		"python.formatting.provider": "black",
+		"editor.tabSize": 2
 	},
 	"extensions": {
 		"recommendations": [
@@ -15,7 +17,8 @@
 			"davidanson.vscode-markdownlint",
 			"mhutchie.git-graph",
 			"vivaxy.vscode-conventional-commits",
-			"ms-python.vscode-pylance"
+			"ms-python.vscode-pylance",
+			"KevinRose.vsc-python-indent"
 		]
 	}
 }

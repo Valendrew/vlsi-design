@@ -1,2 +1,5 @@
 # vscode folder
 .vscode/
+
+# venv environemnt
+.env/
