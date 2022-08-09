@@ -31,6 +31,7 @@ def compute_solution(data_filename: str, mode="dzn"):
         width = instance.__getitem__("W")
 
         # print solution
+        print(f"Solving {data_filename} with W={width} and H={height}")
         for i in range(0, n):
             print(
                 f"{circuits[i][0]} {circuits[i][1]}, {coords['x'][i]} {coords['y'][i]}"
@@ -39,5 +40,7 @@ def compute_solution(data_filename: str, mode="dzn"):
 
 
 if __name__ == "__main__":
-    # compute_solution("ins-1.dzn")
+    compute_solution("ins-1.dzn")
     compute_solution("ins-2.dzn")
+    compute_solution("ins-3.dzn")
+    # compute_solution("ins-4.dzn")
