@@ -1,0 +1,8 @@
+name: unibo-cdmo
+dependencies:
+  - python=3.8
+  - numpy
+  - matplotlib
+  - pip
+  - pip:
+    - minizinc[dzn]

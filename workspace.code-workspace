@@ -18,7 +18,8 @@
 			"mhutchie.git-graph",
 			"vivaxy.vscode-conventional-commits",
 			"ms-python.vscode-pylance",
-			"KevinRose.vsc-python-indent"
+			"kevinrose.vsc-python-indent",
+			"eamodio.gitlens"
 		]
 	}
 }
