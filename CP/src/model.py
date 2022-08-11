@@ -40,7 +40,7 @@ def compute_solution(data_filename: str, mode="dzn"):
 
 
 if __name__ == "__main__":
-    compute_solution("ins-1.dzn")
-    compute_solution("ins-2.dzn")
+    # compute_solution("ins-1.dzn")
+    # compute_solution("ins-2.dzn")
     compute_solution("ins-3.dzn")
     # compute_solution("ins-4.dzn")
