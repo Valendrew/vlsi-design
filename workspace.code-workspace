@@ -13,13 +13,9 @@
 	},
 	"extensions": {
 		"recommendations": [
-			"yzhang.markdown-all-in-one",
-			"davidanson.vscode-markdownlint",
 			"mhutchie.git-graph",
-			"vivaxy.vscode-conventional-commits",
 			"ms-python.vscode-pylance",
-			"kevinrose.vsc-python-indent",
-			"eamodio.gitlens"
+			"DekkerOne.minizinc"
 		]
 	}
 }
