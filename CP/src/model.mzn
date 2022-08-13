@@ -6,7 +6,6 @@ int: N;
 array[1..N, 1..2] of int: CIRCUITS;
 
 % Variables
-% TODO: check the correctness of these bounds 
 int: l_low = min(col(CIRCUITS, 2));
 int: l_up = sum(col(CIRCUITS, 2));
 var l_low..l_up: l;
@@ -19,11 +18,17 @@ array [1..N] of var 0..l_up-min(col(CIRCUITS, 2)): coord_y;
 %%%%%%%% CONSTRAINTS %%%%%%%%
 
 % Avoid overlapping between the circuits
-constraint diffn(coord_x, coord_y, col(CIRCUITS, 1), col(CIRCUITS, 2));
+constraint diffn_nonstrict(coord_x, coord_y, col(CIRCUITS, 1), col(CIRCUITS, 2));
+
 % Constrain the circuits within the available area
 constraint forall(i in 1..N)(coord_x[i] + CIRCUITS[i, 1] <= W /\ coord_y[i] + CIRCUITS[i, 2] <= l);
 
-% TODO: is there another way to run a search for 2 arrays?
+% Find the x coordinates with 'cumulative' global constraints
+constraint cumulative(coord_x, col(CIRCUITS, 1), col(CIRCUITS, 2), l);
+
+
+
+
 solve :: seq_search([
              int_search(coord_x, first_fail, indomain_min),
              int_search(coord_y, input_order, indomain_min)])

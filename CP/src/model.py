@@ -4,7 +4,7 @@ from os.path import join as join_path
 from plot import plot
 
 root_path = "./CP"
-model_file = join_path(root_path, "src/model_boundzero.mzn")
+model_file = join_path(root_path, "src/model.mzn")
 plot_path = join_path(root_path, "out/{file}")
 data_path = {
     "dzn": "./vlsi-instances/dzn-instances/{file}",
@@ -32,7 +32,16 @@ def compute_solution(data_filename: str, mode="dzn"):
         width = instance.__getitem__("W")
 
         print(f"Solving {data_filename} with W={width} and H={height}")
-        print(f"Time: {result.statistics['time']}")
+        ex_time = result.statistics['time']
+        magnitude = "ms"
+
+        if (ex_time // 1000) > 0:
+            ex_time /= 1000
+            magnitude = "s"
+        else:
+            magnitude = "ms"
+
+        print(f"Time: {ex_time} {magnitude}")
 
         for i in range(0, n):
             print(
@@ -42,4 +51,4 @@ def compute_solution(data_filename: str, mode="dzn"):
 
 
 if __name__ == "__main__":
-    compute_solution("ins-3.dzn")
+    compute_solution("ins-14.dzn")
