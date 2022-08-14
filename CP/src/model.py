@@ -1,7 +1,8 @@
 from minizinc import Instance, Model, Solver
 from os.path import join as join_path
+from datetime import timedelta
 
-from plot import plot
+from plot import plot, plot_cmap
 
 root_path = "./CP"
 model_file = join_path(root_path, "src/model.mzn")
@@ -20,9 +21,13 @@ def compute_solution(data_filename: str, mode="dzn"):
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
     instance.add_file(data_file, parse_data=True)
-    result = instance.solve()
+    result = instance.solve(timeout=timedelta(seconds=30))
 
     if result.status.OPTIMAL_SOLUTION:
+        if not hasattr(result, "solution") or (result.solution is None):
+            print("No solutions found within the time limits.")
+            return -1
+
         coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
         height = result.solution.l
 
@@ -32,14 +37,14 @@ def compute_solution(data_filename: str, mode="dzn"):
         width = instance.__getitem__("W")
 
         print(f"Solving {data_filename} with W={width} and H={height}")
-        ex_time = result.statistics['time']
-        magnitude = "ms"
+        ex_time = result.statistics['solveTime'].total_seconds()
+        magnitude = "s"
 
-        if (ex_time // 1000) > 0:
-            ex_time /= 1000
-            magnitude = "s"
-        else:
+        if (ex_time) < 0.01:
+            ex_time *= 1000
             magnitude = "ms"
+        else:
+            magnitude = "s"
 
         print(f"Time: {ex_time} {magnitude}")
 
@@ -47,7 +52,7 @@ def compute_solution(data_filename: str, mode="dzn"):
             print(
                 f"{circuits[i][0]} {circuits[i][1]}, {coords['x'][i]} {coords['y'][i]}"
             )
-        plot(width, height, n, circuits, coords, plot_file)
+        plot_cmap(width, height, n, circuits, coords, plot_file, "turbo_r")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ int: l_low = min(heights);
 int: l_up = sum(heights);
 var l_low..l_up: l;
 
-% 2 arrays for the coordinates
+% x and y coordinates of the circuits
 array [1..N] of var 0..W-min(widths): coord_x;
 array [1..N] of var 0..l_up-min(heights): coord_y;
 
@@ -31,12 +31,10 @@ constraint forall(i in 1..N)(coord_x[i] + widths[i] <= W /\ coord_y[i] + heights
 constraint cumulative(coord_x, widths, heights, l);
 constraint cumulative(coord_y, heights, widths, W);
 
-
-
-
 solve :: seq_search([
-             int_search(coord_x, first_fail, indomain_min),
-             int_search(coord_y, input_order, indomain_min)])
+            int_search([l], dom_w_deg, indomain_random)::restart_luby(250),
+            int_search(coord_x, first_fail, indomain_min), % TODO: if I put input_order here it doesn't work well
+            int_search(coord_y, first_fail, indomain_min)])
       minimize l;
 
 output ["- The max height is \(l).\n- The coordinates are:\n"];
