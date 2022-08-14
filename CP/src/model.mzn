@@ -5,26 +5,31 @@ int: W;
 int: N;
 array[1..N, 1..2] of int: CIRCUITS;
 
+% Extract widths and heights for usability 
+array[1..N] of int: widths = [CIRCUITS[i, 1] | i in 1..N];
+array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
+
 % Variables
-int: l_low = min(col(CIRCUITS, 2));
-int: l_up = sum(col(CIRCUITS, 2));
+int: l_low = min(heights);
+int: l_up = sum(heights);
 var l_low..l_up: l;
 
-% Use 2 different arrays for the coordinates in order to give different bounds
-array [1..N] of var 0..W-min(col(CIRCUITS, 1)): coord_x;
-array [1..N] of var 0..l_up-min(col(CIRCUITS, 2)): coord_y;
+% 2 arrays for the coordinates
+array [1..N] of var 0..W-min(widths): coord_x;
+array [1..N] of var 0..l_up-min(heights): coord_y;
 
 
 %%%%%%%% CONSTRAINTS %%%%%%%%
 
 % Avoid overlapping between the circuits
-constraint diffn_nonstrict(coord_x, coord_y, col(CIRCUITS, 1), col(CIRCUITS, 2));
+constraint diffn_nonstrict(coord_x, coord_y, widths, heights);
 
 % Constrain the circuits within the available area
-constraint forall(i in 1..N)(coord_x[i] + CIRCUITS[i, 1] <= W /\ coord_y[i] + CIRCUITS[i, 2] <= l);
+constraint forall(i in 1..N)(coord_x[i] + widths[i] <= W /\ coord_y[i] + heights[i] <= l);
 
 % Find the x coordinates with 'cumulative' global constraints
-constraint cumulative(coord_x, col(CIRCUITS, 1), col(CIRCUITS, 2), l);
+constraint cumulative(coord_x, widths, heights, l);
+constraint cumulative(coord_y, heights, widths, W);
 
 
 
