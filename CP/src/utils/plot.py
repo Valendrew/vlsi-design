@@ -5,7 +5,7 @@ from matplotlib.collections import PatchCollection
 import numpy as np
 
 
-def plot(width, height, n, circuits, coords, path):
+def plot(width, height, n, circuits, coords, path, cmap_name="Set3"):
     image = np.zeros((width, height))
     # create image
     for i in range(0, n):
@@ -18,11 +18,12 @@ def plot(width, height, n, circuits, coords, path):
             i + 1
         )
 
+    cmap = plt.cm.get_cmap(cmap_name, n)
     fig = plt.figure(figsize=(width, width))
     plt.grid(visible=True)
     plt.xticks(np.arange(0, width+1, step=1))
     plt.yticks(np.arange(0, height+1, step=1))
-    plt.imshow(image, origin="lower", extent=[0, width, 0, height])
+    plt.imshow(image, origin="lower", extent=[0, width, 0, height], cmap=cmap)
     plt.savefig(path, bbox_inches="tight")
     plt.close(fig)
 

@@ -6,4 +6,5 @@
 
 __pycache__/
 
-CP/out/*.png
+CP/out/plots/*.png
+CP/out/statistics/*.csv
