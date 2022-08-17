@@ -40,10 +40,12 @@ constraint cumulative(coord_y, heights, widths, W);
 
 %%%%%%%% Symmetry breaking %%%%%%%%
 % TODO: with lex_greatereq the computation is speeded up (without sorting on the array), why?
+% TODO: check if this constraint is correct, if I don't write i<j probably I consider 2 times
+%       lex_greater(co[i]..co[j]) and lex_greater(co[j]..co[i])
 % Symmetry breaking for circuits with the same widths and heights
 predicate symm_breaking_same() = 
       forall(i,j in 1..N where i != j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
-            lex_greatereq([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
+            lex_greater([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
       );
 
 % I need to pass 'l' or 'W' and 'coord_y' or 'coord_x' respectively in order to compute the symmetry breaking
@@ -51,7 +53,7 @@ predicate symm_breaking_same() =
 predicate symm_breaking(var int: dim, array[1..N] of var int: coord, array[1..N] of var int: values) = 
       let {
             array[1..N] of var int: new_coord = [dim - coord[i] - values[i] | i in 1..N]
-      } in lex_greatereq(coord, new_coord);
+      } in lex_greater(coord, new_coord);
 
 
 constraint symm_breaking_same() /\ symm_breaking(W, coord_x, widths) /\ symm_breaking(l, coord_y, heights);

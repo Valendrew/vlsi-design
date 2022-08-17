@@ -30,7 +30,7 @@ def compute_solution(data_filename: str, mode="dzn", solver="gecode", free_searc
     
     if result.status.OPTIMAL_SOLUTION:
         if not hasattr(result, "solution") or (result.solution is None):
-            vprint("No solutions found within the time limits.")
+            vprint("No solutions found.")
             return -1
 
         coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
@@ -63,14 +63,15 @@ def compute_solution(data_filename: str, mode="dzn", solver="gecode", free_searc
 
 
 # Compute the solution for the desired number of instances and with the desired solver
-def compute_test(solver="gecode", free_search=False, timeout=300, verbose=False, up_to_instance=40, save_stats=False):
-    statistics_file = statistics_path.format(file=solver+"_"+str(up_to_instance))
-    for i in range(up_to_instance):
-        result = compute_solution(f"ins-{i+1}.dzn", solver=solver, free_search=free_search, timeout=timeout, verbose=verbose)
+def compute_test(solver="gecode", free_search=False, timeout=300, verbose=False, test_instances=(1,40), save_stats=False):
+    statistics_file = statistics_path.format(file=solver+"_"+str(test_instances[0])+"-"+str(test_instances[1]))
+    for i in range(test_instances[0], test_instances[1]+1):
+        result = compute_solution(f"ins-{i}.dzn", solver=solver, free_search=free_search, timeout=timeout, verbose=verbose)
+        print(f"- Computed a solution for instance {i}.")
         if save_stats:
-            save_statistics(statistics_file, result)
+            save_statistics(statistics_file, result, i)
 
 
 if __name__ == "__main__":
-    #compute_solution("ins-14.dzn", solver="chuffed", free_search=True, timeout=30, plots=True)
-    compute_test("chuffed", free_search=True, timeout=30, verbose=False, up_to_instance=2)
+    compute_solution("ins-32.dzn", solver="chuffed", free_search=True, plots=True, verbose=True)
+    #compute_test("chuffed", free_search=True, timeout=300, verbose=False, test_instances=(1, 10), save_stats=True)
