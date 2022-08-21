@@ -1,9 +1,13 @@
 name: unibo-cdmo
 channels:
   - defaults
+  - conda-forge
 dependencies:
+  - pandas
   - pip
   - python=3.8
   - numpy
   - matplotlib
   - black
+  - pip: 
+    - minizinc[dzn]
