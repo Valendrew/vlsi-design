@@ -10,13 +10,15 @@ array[1..N] of int: widths = [CIRCUITS[i, 1] | i in 1..N];
 array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
+% Lower bound is the minimum height among circuits' ones
 int: l_low = min(heights);
+% Upper bound is the sum of all circuit heights, as staking one above the other
 int: l_up = sum(heights);
 var l_low..l_up: l;
 
-% x and y coordinates of the circuits
+% x and y coordinates of the circuits wrtt bottom left coordinate
 array [1..N] of var 0..W-min(widths): coord_x;
-array [1..N] of var 0..l_up-min(heights): coord_y;
+array [1..N] of var 0..l_up-l_low: coord_y;
 
 
 %%%%%%%% CONSTRAINTS %%%%%%%%
@@ -26,15 +28,18 @@ array [1..N] of var 0..l_up-min(heights): coord_y;
 %constraint coord_x[max_ind] = 0 /\ coord_y[max_ind] = 0;
 
 % Avoid overlapping between the circuits
+% Constrains rectangles i, given by their origins (x[i], y[i]) and sizes (dx[i], dy[i]), to be non-overlapping.
 constraint diffn_nonstrict(coord_x, coord_y, widths, heights);
 
-% Constrain the circuits within the available area
+% Constrains the circuits within the available area
 constraint forall(i in 1..N)(coord_x[i] + widths[i] <= W /\ coord_y[i] + heights[i] <= l);
 
 % Implied constraints
 % TODO: in each "line" if we sum all the circuits the sum is = W
 
 % Find the x and y coordinates using 'cumulative' global constraints
+% Requires that a set of tasks given by start times s, durations d, and resource requirements r, 
+% never require more than a global resource bound b at any one time.
 constraint cumulative(coord_x, widths, heights, l);
 constraint cumulative(coord_y, heights, widths, W);
 
