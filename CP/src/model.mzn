@@ -13,7 +13,7 @@ array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
 % Lower bound is the minimum height among circuits' ones
-int: l_low = min(heights);
+int: l_low = sum([(widths[i]*heights[i])/W | i in 1..N]);
 % Upper bound is the sum of all circuit heights, as staking one above the other
 int: l_up = sum(heights);
 var l_low..l_up: l;
@@ -37,7 +37,7 @@ constraint diffn_nonstrict(coord_x, coord_y, widths, heights);
 constraint forall(i in 1..N)(coord_x[i] + widths[i] <= W /\ coord_y[i] + heights[i] <= l);
 
 % Implied constraints
-% TODO: in each "line" if we sum all the circuits the sum is = W
+% TODO: in each "line" if we sum all the circuits the sum is <= W
 
 % Find the x and y coordinates using 'cumulative' global constraints
 % Requires that a set of tasks given by start times s, durations d, and resource requirements r, 
@@ -47,12 +47,9 @@ constraint cumulative(coord_y, heights, widths, W);
 
 
 %%%%%%%% Symmetry breaking %%%%%%%%
-% TODO: with lex_greatereq the computation is speeded up (without sorting on the array), why?
-% TODO: check if this constraint is correct, if I don't write i<j probably I consider 2 times
-%       lex_greater(co[i]..co[j]) and lex_greater(co[j]..co[i])
 % Symmetry breaking for circuits with the same widths and heights
 predicate symm_breaking_same() = 
-      forall(i,j in 1..N where i != j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
+      forall(i in 1..N-1, j in 2..N where i < j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
             lex_greater([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
       );
 
