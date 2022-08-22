@@ -28,18 +28,19 @@ def plot(width, height, n, circuits, coords, path, cmap_name="Set3"):
     plt.close(fig)
 
 
-def plot_cmap(width, height, n, circuits, coords, path, cmap_name="Set3"):
+def plot_cmap(width, height, n, circuits, coords, path, rotation=None, cmap_name="Set3"):
     fig = plt.figure(figsize=(width, width))
     ax = fig.add_subplot(111, aspect='equal')
 
     cmap = plt.cm.get_cmap(cmap_name, n)
     patches = []
-
+    
+    rotation = [0 for _ in range(n)] if rotation is None else rotation
     for i in range(0,n):
-        circ_width = int(circuits[i][0])
-        circ_height = int(circuits[i][1])
-        coord_x = int(coords["x"][i])
-        coord_y = int(coords["y"][i])
+        circ_width = int(circuits[i][0]) if rotation[i]==0 else int(circuits[i][1])
+        circ_height = int(circuits[i][1]) if rotation[i]==0 else int(circuits[i][0])
+        coord_x = int(coords["x"][i]) if rotation[i]==0 else int(coords["y"][i])
+        coord_y = int(coords["y"][i]) if rotation[i]==0 else int(coords["x"][i])
         patches.append(Rectangle((coord_x, coord_y), circ_width, circ_height, ec='k', linewidth=1, facecolor=cmap(i)))
     ax.add_collection(PatchCollection(patches, match_original=True))
     

@@ -6,23 +6,26 @@ from utils.plot import plot, plot_cmap
 from utils.manage_statistics import save_statistics
 
 root_path = "./CP"
-model_file = join_path(root_path, "src/model.mzn")
-plot_path = join_path(root_path, "out/plots/{file}")
-statistics_path = join_path(root_path, "out/statistics/{file}.csv")
+model_file = {
+    "base": join_path(root_path, "src/model.mzn"),
+    "rotation": join_path(root_path, "src/model_rotation.mzn"),
+}
+plot_path = join_path(root_path, "out/plots/{model}/{file}")
+statistics_path = join_path(root_path, "out/statistics/{model}/{file}.csv")
 data_path = {
     "dzn": "./vlsi-instances/dzn-instances/{file}",
     "txt": "./vlsi-instances/txt-instances/{file}",
 }
 
 
-def compute_solution(data_filename: str, mode="dzn", solver="gecode", free_search=False, timeout=300, verbose=False, plots=False):
+def compute_solution(model_type, data_filename: str, mode="dzn", solver="gecode", free_search=False, timeout=300, verbose=False, plots=False):
     # Define a verbose print in order to print only if "verbose" is true
     vprint = print if verbose else lambda *a, **k: None
 
     data_file = data_path[mode].format(file=data_filename)
-    plot_file = plot_path.format(file=data_filename.split(".")[0])
+    plot_file = plot_path.format(model=model_type, file=data_filename.split(".")[0])
 
-    model = Model(model_file)
+    model = Model(model_file[model_type])
     solver = Solver.lookup(solver)
     instance = Instance(solver, model)
     instance.add_file(data_file, parse_data=True)
@@ -40,6 +43,7 @@ def compute_solution(data_filename: str, mode="dzn", solver="gecode", free_searc
         circuits = instance.__getitem__("CIRCUITS")
         n = instance.__getitem__("N")
         width = instance.__getitem__("W")
+        rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
 
         vprint(f"Solving {data_filename} with W={width} and H={height}")
         ex_time = result.statistics['solveTime'].total_seconds() + result.statistics['initTime'].total_seconds()
@@ -55,23 +59,24 @@ def compute_solution(data_filename: str, mode="dzn", solver="gecode", free_searc
 
         for i in range(0, n):
             vprint(
-                f"{circuits[i][0]} {circuits[i][1]}, {coords['x'][i]} {coords['y'][i]}"
+                (f"{circuits[i][1] if rotation and rotation[i] else circuits[i][0]} {circuits[i][0] if rotation and rotation[i] else circuits[i][1]}, "
+                f"{coords['y'][i] if rotation and rotation[i] else coords['x'][i]} {coords['x'][i] if rotation and rotation[i] else coords['y'][i]}")
             )
         if plots:
-            plot_cmap(width, height, n, circuits, coords, plot_file, "turbo_r")
+            plot_cmap(width, height, n, circuits, coords, plot_file, rotation, "turbo_r")
         return result
 
 
 # Compute the solution for the desired number of instances and with the desired solver
-def compute_test(solver="gecode", free_search=False, timeout=300, verbose=False, test_instances=(1,40), save_stats=False):
+def compute_test(solver="gecode", model_type="base", free_search=False, timeout=300, verbose=False, test_instances=(1,40), save_stats=False):
     statistics_file = statistics_path.format(file=solver+"_"+str(test_instances[0])+"-"+str(test_instances[1]))
     for i in range(test_instances[0], test_instances[1]+1):
-        result = compute_solution(f"ins-{i}.dzn", solver=solver, free_search=free_search, timeout=timeout, verbose=verbose)
+        result = compute_solution(model_type, f"ins-{i}.dzn", solver=solver, free_search=free_search, timeout=timeout, verbose=verbose)
         print(f"- Computed a solution for instance {i}.")
         if save_stats:
             save_statistics(statistics_file, result, i)
 
 
 if __name__ == "__main__":
-    compute_solution("ins-32.dzn", solver="chuffed", free_search=True, plots=True, verbose=True)
+    compute_solution("rotation","ins-39.dzn", solver="chuffed", free_search=True, plots=True, verbose=True)
     #compute_test("chuffed", free_search=True, timeout=300, verbose=False, test_instances=(1, 10), save_stats=True)

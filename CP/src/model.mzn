@@ -1,4 +1,6 @@
-include "globals.mzn";
+include "diffn_nonstrict.mzn";
+include "cumulative.mzn";
+include "lex_greater.mzn";
 
 % Inputs 
 int: W;
@@ -43,6 +45,7 @@ constraint forall(i in 1..N)(coord_x[i] + widths[i] <= W /\ coord_y[i] + heights
 constraint cumulative(coord_x, widths, heights, l);
 constraint cumulative(coord_y, heights, widths, W);
 
+
 %%%%%%%% Symmetry breaking %%%%%%%%
 % TODO: with lex_greatereq the computation is speeded up (without sorting on the array), why?
 % TODO: check if this constraint is correct, if I don't write i<j probably I consider 2 times
@@ -66,7 +69,7 @@ constraint symm_breaking_same() /\ symm_breaking(W, coord_x, widths) /\ symm_bre
 
 solve :: seq_search([
             int_search([l], input_order, indomain_min),%::restart_luby(250),
-            int_search(coord_x, input_order, indomain_min), % TODO: if I put input_order here it doesn't work well
+            int_search(coord_x, input_order, indomain_min),
             int_search(coord_y, input_order, indomain_min)])
       minimize l;
 
