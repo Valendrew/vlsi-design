@@ -11,19 +11,19 @@ array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
 % Lower bound is the minimum height among circuits' ones
-int: l_low =  ceil(sum([(widths[i]*heights[i])/W | i in 1..N]));
+int: l_low = ceil(sum([(widths[i]*heights[i])/W | i in 1..N])); % TODO: check correctness, otherwise use min(heights)
 % Upper bound is the sum of all circuit heights, as staking one above the other
 int: l_up = sum(heights);
 var l_low..l_up: l;
 
 % x and y coordinates of the circuits wrtt bottom left coordinate
 array [1..N] of var 0..W-min(widths): coord_x;
-array [1..N] of var 0..l_up-l_low: coord_y;
+array [1..N] of var 0..l_up-min(heights): coord_y;
 
 
 %%%%%%%% CONSTRAINTS %%%%%%%%
 
-% Put the largest circuit in the first position
+% Put the largest circuit in the first position, the instance 40 fails
 %int: max_ind = reverse(arg_sort([widths[i]*heights[i] | i in 1..N]))[1];
 %constraint coord_x[max_ind] = 0 /\ coord_y[max_ind] = 0;
 
@@ -45,18 +45,18 @@ constraint cumulative(coord_y, heights, widths, W);
 % Symmetry breaking for circuits with the same widths and heights
 predicate symm_breaking_same() = 
       forall(i, j in 1..N where i != j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
-            lex_greatereq([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
+            lex_greater([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
       );
 
-% I need to pass 'l' or 'W' and 'coord_y' or 'coord_x' respectively in order to compute the symmetry breaking
-% w.r.t. a specific axis
-predicate symm_breaking(var int: dim, array[1..N] of var int: coord, array[1..N] of var int: values) = 
+% Compute the symmetry breaking w.r.t. the x or y axis
+predicate symm_breaking_axes() = 
       let {
-            array[1..N] of var int: new_coord = [dim - coord[i] - values[i] | i in 1..N]
-      } in lex_greatereq(coord, new_coord);
+            array[1..N] of var int: new_x = [W - coord_x[i] - widths[i] | i in 1..N];
+            array[1..N] of var int: new_y = [l - coord_y[i] - heights[i] | i in 1..N]
+      } in lex_greater(coord_x, new_x) /\ lex_greater(coord_y, new_y);
 
 
-constraint symm_breaking_same() /\ symm_breaking(W, coord_x, widths) /\ symm_breaking(l, coord_y, heights);
+constraint symm_breaking_same() /\ symm_breaking_axes();
 
 
 solve :: seq_search([
