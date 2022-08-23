@@ -39,8 +39,8 @@ def plot_cmap(width, height, n, circuits, coords, path, rotation=None, cmap_name
     for i in range(0,n):
         circ_width = int(circuits[i][0]) if rotation[i]==0 else int(circuits[i][1])
         circ_height = int(circuits[i][1]) if rotation[i]==0 else int(circuits[i][0])
-        coord_x = int(coords["x"][i]) if rotation[i]==0 else int(coords["y"][i])
-        coord_y = int(coords["y"][i]) if rotation[i]==0 else int(coords["x"][i])
+        coord_x = int(coords["x"][i])
+        coord_y = int(coords["y"][i])
         patches.append(Rectangle((coord_x, coord_y), circ_width, circ_height, ec='k', linewidth=1, facecolor=cmap(i)))
     ax.add_collection(PatchCollection(patches, match_original=True))
     

@@ -60,7 +60,7 @@ def compute_solution(model_type, data_filename: str, mode="dzn", solver="gecode"
         for i in range(0, n):
             vprint(
                 (f"{circuits[i][1] if rotation and rotation[i] else circuits[i][0]} {circuits[i][0] if rotation and rotation[i] else circuits[i][1]}, "
-                f"{coords['y'][i] if rotation and rotation[i] else coords['x'][i]} {coords['x'][i] if rotation and rotation[i] else coords['y'][i]}")
+                f"{coords['x'][i]} {coords['y'][i]}")
             )
         if plots:
             plot_cmap(width, height, n, circuits, coords, plot_file, rotation, "turbo_r")
@@ -78,5 +78,5 @@ def compute_test(solver="gecode", model_type="base", free_search=False, timeout=
 
 
 if __name__ == "__main__":
-    compute_solution("rotation","ins-39.dzn", solver="chuffed", free_search=True, plots=True, verbose=True)
+    compute_solution("rotation","ins-10.dzn", solver="chuffed", free_search=True, plots=True, verbose=True)
     #compute_test("chuffed", free_search=True, timeout=300, verbose=False, test_instances=(1, 10), save_stats=True)
