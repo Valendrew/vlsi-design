@@ -11,7 +11,7 @@ array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
 % Lower bound is the maximum height among circuits' widths and heights
-int: l_low = max(max(heights), max(widths));
+int: l_low = ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W);%max(max(heights), max(widths));
 % Upper bound is the sum of all circuit heights, as staking one above the other + the sum of the widths
 int: l_up = sum([max(heights[i], widths[i]) | i in 1..N]);%ceil(l_low + sum(heights) / 2);
 var l_low..l_up: l;
@@ -46,7 +46,7 @@ constraint forall(i in 1..N)(
 %%%%%%%% Symmetry breaking %%%%%%%%
 % Break symmetries with circuits of the same size
 predicate symm_breaking_same() = 
-      forall(i,j in 1..N where i != j /\ w_real[i]==w_real[j] /\ h_real[i]==h_real[j])(
+      forall(i,j in 1..N where i < j /\ w_real[i]==w_real[j] /\ h_real[i]==h_real[j])(
             lex_lesseq([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
       );
 
@@ -60,12 +60,13 @@ predicate symm_breaking_axes() =
 constraint symm_breaking_same() /\ symm_breaking_axes();
 
 % Implied constraints, in each line the sum of the widths is equal to W (we compute only in the first and last row)
-constraint (
-      let{
-            array[1..N] of var int: y_0 = [if coord_y[i] = 0 then w_real[i] else 0 endif | i in 1..N];
-            array[1..N] of var int: y_l = [if coord_y[i] = l-h_real[i] then w_real[i] else 0 endif | i in 1..N];
-      }in sum(y_0) == W /\ sum(y_l) == W
-);
+% TODO: it speeds up the computation for the instances but it worsen the solution for the last ones
+%constraint (
+%      let{
+%            array[1..N] of var int: y_0 = [if coord_y[i] = 0 then w_real[i] else 0 endif | i in 1..N];
+%            array[1..N] of var int: y_l = [if coord_y[i] = l-h_real[i] then w_real[i] else 0 endif | i in 1..N];
+%      }in sum(y_0) == W /\ sum(y_l) == W
+%);
  
 
 % Set rotation to false for the squared circuits

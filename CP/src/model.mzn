@@ -11,7 +11,7 @@ array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
 % Lower bound is the minimum height among circuits' ones
-int: l_low = ceil(sum([(widths[i]*heights[i])/W | i in 1..N])); % TODO: check correctness, otherwise use min(heights)
+int: l_low = ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W); % TODO: check correctness, otherwise use min(heights)
 % Upper bound is the sum of all circuit heights, as staking one above the other
 int: l_up = sum(heights);
 var l_low..l_up: l;
@@ -44,8 +44,8 @@ constraint cumulative(coord_y, heights, widths, W);
 %%%%%%%% Symmetry breaking %%%%%%%%
 % Symmetry breaking for circuits with the same widths and heights
 predicate symm_breaking_same() = 
-      forall(i, j in 1..N where i != j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
-            lex_greater([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
+      forall(i, j in 1..N where i < j /\ widths[i]==widths[j] /\ heights[i]==heights[j])(
+            lex_lesseq([coord_x[i], coord_y[i]], [coord_x[j], coord_y[j]])
       );
 
 % Compute the symmetry breaking w.r.t. the x or y axis
@@ -53,7 +53,7 @@ predicate symm_breaking_axes() =
       let {
             array[1..N] of var int: new_x = [W - coord_x[i] - widths[i] | i in 1..N];
             array[1..N] of var int: new_y = [l - coord_y[i] - heights[i] | i in 1..N]
-      } in lex_greater(coord_x, new_x) /\ lex_greater(coord_y, new_y);
+      } in lex_lesseq(coord_x, new_x) /\ lex_lesseq(coord_y, new_y);
 
 
 constraint symm_breaking_same() /\ symm_breaking_axes();

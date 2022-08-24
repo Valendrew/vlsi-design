@@ -2,6 +2,9 @@ from minizinc import Instance, Model, Solver
 from os.path import join as join_path
 from datetime import timedelta
 
+import sys
+sys.path.append("./")
+
 from utils.plot import plot, plot_cmap
 from utils.manage_statistics import save_statistics
 from utils.types import ModelEnum, SolverEnum
@@ -130,15 +133,15 @@ def compute_test(
 
 
 if __name__ == "__main__":
-    # compute_solution(
-    #     ModelEnum.ROTATION,
-    #     "ins-10.dzn",
-    #     solver="chuffed",
-    #     free_search=True,
-    #     plots=True,
-    #     verbose=True,
-    # )
-    compute_test(
+    compute_solution(
+        ModelEnum.ROTATION,
+        "ins-40.dzn",
+        solver=SolverEnum.CHUFFED,
+        free_search=True,
+        plots=True,
+        verbose=True,
+    )
+    """ compute_test(
         SolverEnum.CHUFFED,
         model_type=ModelEnum.ROTATION,
         free_search=True,
@@ -147,4 +150,4 @@ if __name__ == "__main__":
         test_instances=[1, 2, 3, 4, 5, 15],
         save_stats=True,
         plots=True,
-    )
+    ) """
