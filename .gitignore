@@ -6,8 +6,6 @@
 
 __pycache__/
 
-CP/out/plots/base/*.png
-CP/out/plots/rotation/*.png
-
-CP/out/statistics/base/*.csv
-CP/out/statistics/rotation/*.csv
+# Ignore all the csv and png files
+*.png
+*.csv
