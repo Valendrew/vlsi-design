@@ -13,9 +13,8 @@
 	},
 	"extensions": {
 		"recommendations": [
-			"mhutchie.git-graph",
-			"ms-python.vscode-pylance",
-			"DekkerOne.minizinc"
+			"dekkerone.minizinc",
+			"martinring.smt-lib-syntax"
 		]
 	}
 }

@@ -39,6 +39,11 @@ Solving processes that exceed a time limit of 5 minutes should be aborted
 
 - Ones too difficult to be solve within the time limit can be avoided: it is not necessary to succeed in solving all instances
 
+## MIP solver
+
+- CPLEX Optimizer
+- Pulp for Python interface
+
 ## Folder structure
 
 - *~/out/*: output files of those instances that could be solved successfully
