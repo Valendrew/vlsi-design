@@ -8,6 +8,8 @@ dependencies:
   - python=3.8
   - numpy
   - matplotlib
-  - black
-  - pip: 
+  - pip:
+    - black
     - minizinc[dzn]
+    - z3-solver
+    - pulp
