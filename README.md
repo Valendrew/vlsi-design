@@ -42,6 +42,7 @@ Solving processes that exceed a time limit of 5 minutes should be aborted
 ## MIP solver
 
 - CPLEX Optimizer
+  - [Installing CPLEX_PY](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#installing-cplex-py)
 - Pulp for Python interface
 
 ## Folder structure
@@ -50,3 +51,7 @@ Solving processes that exceed a time limit of 5 minutes should be aborted
   - Output files name with a corrispondence to the related input file
 - *~/src/*: source code
 - *README*: basic instructions for execution
+
+## Further reading
+
+- [MIP non-overlapping constraint](https://yetanothermathprogrammingconsultant.blogspot.com/2017/07/rectangles-no-overlap-constraints.html)
