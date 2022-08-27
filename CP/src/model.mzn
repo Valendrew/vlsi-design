@@ -1,4 +1,5 @@
 include "globals.mzn";
+%TODO: avoid if then else because ineffective due to reification, use ->?
 
 % Inputs 
 int: W;
