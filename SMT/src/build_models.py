@@ -6,7 +6,7 @@ import sys
 sys.path.append("./")
 
 from utils.smt_utils import extract_input_from_txt, z3_parse_solution, get_w_and_h_from_txt
-from utils.types import SolverSMT, LogicSMT, ModelEnum
+from utils.types import SolverSMT, LogicSMT, ModelType
 from utils.plot import plot_cmap
 
 root_path = "./SMT"
@@ -111,7 +111,7 @@ def run_solver(heights, timeout=300):
 if __name__ == "__main__":
 
     instance_file = "ins-11.txt"
-    plot_file = plot_path.format(model=ModelEnum.BASE.value, file=instance_file.split(".")[0])
+    plot_file = plot_path.format(model=ModelType.BASE.value, file=instance_file.split(".")[0])
 
     W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
     build_model(W, N, widths, heights, logic=LogicSMT.LIA.value)

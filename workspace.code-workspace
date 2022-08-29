@@ -9,7 +9,7 @@
 		"git.autofetch": true,
 		"conventionalCommits.lineBreak": "\\n",
 		"python.formatting.provider": "black",
-		"editor.tabSize": 2
+		"editor.tabSize": 4
 	},
 	"extensions": {
 		"recommendations": [

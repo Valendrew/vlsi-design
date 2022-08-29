@@ -1,153 +1,117 @@
-from minizinc import Instance, Model, Solver
+from distutils.command.config import config
 from os.path import join as join_path
-from datetime import timedelta
 
-import sys
-sys.path.append("./")
+from utils.formatting import format_plot_file, format_statistic_file
+from utils.logging import print_logging
+
 
 from utils.plot import plot, plot_cmap
 from utils.manage_statistics import save_statistics
-from utils.types import ModelEnum, SolverEnum
+from utils.types import ModelType, RunType, SolverMinizinc, InputMode
+from utils.minizinc_solver import run_minizinc
 
-root_path = "./CP"
-model_file = {
-    "base": join_path(root_path, "src/model.mzn"),
-    "rotation": join_path(root_path, "src/model_rotation.mzn"),
-}
-plot_path = join_path(root_path, "out/plots/{model}/{file}")
-statistics_path = join_path(root_path, "out/statistics/{model}/{file}.csv")
-data_path = {
-    "dzn": "./vlsi-instances/dzn-instances/{file}",
-    "txt": "./vlsi-instances/txt-instances/{file}",
-}
+run_type: RunType = RunType.CP
 
 
 def compute_solution(
-    model_type: ModelEnum,
-    data_filename: str,
-    mode="dzn",
-    solver: SolverEnum = SolverEnum.GECODE,
-    free_search=False,
-    timeout=300,
-    verbose=False,
-    plots=False,
+    input_name: str,
+    input_mode: InputMode,
+    model_type: ModelType,
+    solver: SolverMinizinc,
+    timeout: int,
+    free_search: bool,
+    verbose: bool,
 ):
-    # Define a verbose print in order to print only if "verbose" is true
-    vprint = print if verbose else lambda *a, **k: None
+    # plot path
+    plot_file = format_plot_file(run_type, input_name, model_type)
 
-    data_file = data_path[mode].format(file=data_filename)
-    plot_file = plot_path.format(
-        model=model_type.value, file=data_filename.split(".")[0]
+    sol, result = run_minizinc(
+        input_name,
+        run_type,
+        input_mode,
+        model_type,
+        solver,
+        timeout,
+        free_search,
     )
 
-    model = Model(model_file[model_type.value])
-    solver = Solver.lookup(solver.value)
-    instance = Instance(solver, model)
-    instance.add_file(data_file, parse_data=True)
-    result = instance.solve(timeout=timedelta(seconds=timeout), free_search=free_search)
+    if verbose:
+        print_logging(sol)
 
-    if result.status.OPTIMAL_SOLUTION:
-        if not hasattr(result, "solution") or (result.solution is None):
-            vprint("No solutions found.")
-            return -1
+    plot_cmap(
+        sol.width,
+        sol.height,
+        sol.n_circuits,
+        sol.circuits,
+        sol.coords,
+        plot_file,
+        sol.rotation,
+        "turbo_r",
+    )
 
-        coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
-        height = result.solution.l
-
-        # inputs
-        circuits = instance.__getitem__("CIRCUITS")
-        n = instance.__getitem__("N")
-        width = instance.__getitem__("W")
-        rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
-
-        vprint(f"Solving {data_filename} with W={width} and H={height}")
-        ex_time = (
-            result.statistics["solveTime"].total_seconds()
-            + result.statistics["initTime"].total_seconds()
-        )
-
-        magnitude = "s"
-        if (ex_time) < 0.01:
-            ex_time *= 1000
-            magnitude = "ms"
-        else:
-            magnitude = "s"
-
-        vprint(f"Time: {ex_time} {magnitude}")
-
-        for i in range(0, n):
-            vprint(
-                (
-                    f"{circuits[i][1] if rotation and rotation[i] else circuits[i][0]} {circuits[i][0] if rotation and rotation[i] else circuits[i][1]}, "
-                    f"{coords['x'][i]} {coords['y'][i]}"
-                )
-            )
-        if plots:
-            plot_cmap(
-                width, height, n, circuits, coords, plot_file, rotation, "turbo_r"
-            )
-        return result
+    return sol, result
 
 
 # Compute the solution for the desired number of instances and with the desired solver
-def compute_test(
-    solver: SolverEnum = SolverEnum.GECODE,
-    model_type: ModelEnum = ModelEnum.BASE,
-    free_search=False,
-    timeout=300,
-    verbose=False,
-    test_instances=(1, 40),
-    save_stats=False,
-    plots=False,
+def compute_tests(
+    test_instances,
+    input_mode: InputMode,
+    model_type: ModelType,
+    solver: SolverMinizinc,
+    timeout: int,
+    free_search: bool,
+    verbose: bool,
 ):
-    stat_format = (
-        solver.value
-        + "_"
-        + str(test_instances[0])
-        + "-"
-        + str(test_instances[len(test_instances) - 1])
-    )
+    output_name = f"{solver.value}_{min(test_instances)}_{max(test_instances)}"
+
+    # If instances must be treated as a range
     if isinstance(test_instances, tuple):
         test_iterator = range(test_instances[0], test_instances[1] + 1)
+    # If explicits instances are passed as a list
     elif isinstance(test_instances, list):
-        stat_format += "_uncontinguous"
+        output_name += "_uncontinguous"
         test_iterator = test_instances
     else:
-        return
+        return -1
 
-    statistics_file = statistics_path.format(model=model_type.value, file=stat_format)
+    statistics_path = format_statistic_file(run_type, output_name, model_type)
+    print(statistics_path)
 
     for i in test_iterator:
-        result = compute_solution(
-            model_type,
-            f"ins-{i}.dzn",
-            solver=solver,
-            free_search=free_search,
-            timeout=timeout,
-            verbose=verbose,
-            plots=plots
+        sol, result = compute_solution(
+            f"ins-{i}", input_mode, model_type, solver, timeout, free_search, verbose
         )
         print(f"- Computed a solution for instance {i}.")
-        if save_stats:
-            save_statistics(statistics_file, result, i)
+        save_statistics(statistics_path, result, i)
 
 
 if __name__ == "__main__":
-    compute_solution(
-        ModelEnum.BASE,
-        "ins-5.dzn",
-        solver=SolverEnum.CHUFFED,
-        free_search=True,
-        plots=True,
-        verbose=True,
-    )
-    """ compute_test(
-        SolverEnum.CHUFFED,
-        model_type=ModelEnum.ROTATION,
-        free_search=True,
-        timeout=300,
-        verbose=False,
-        test_instances=[1, 2, 3, 4, 5, 15],
-        save_stats=True,
-        plots=True,
-    ) """
+    # TODO change as input of script
+    input_name: str = "ins-5"
+    input_mode = InputMode.DZN
+    model_type: ModelType = ModelType.BASE
+    solver = SolverMinizinc.CHUFFED
+    free_search = True
+
+    # optional inputs
+    verbose: bool = True
+    timeout: int = 300
+
+    # TODO add specific type
+    test_range = (1, 10)
+    save_stats = True
+
+    if save_stats:
+        compute_tests(
+            (1, 10),
+            input_mode,
+            model_type,
+            solver,
+            timeout,
+            free_search,
+            verbose,
+        )
+    else:
+        compute_solution(
+            input_name, input_mode, model_type, solver, timeout, free_search, verbose
+        )

@@ -1,8 +1,10 @@
 name: unibo-cdmo
 channels:
-  - defaults
+  - mosek
   - conda-forge
+  - defaults
 dependencies:
+  - conda
   - pandas
   - pip
   - python=3.8
