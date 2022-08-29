@@ -134,8 +134,8 @@ def compute_test(
 
 if __name__ == "__main__":
     compute_solution(
-        ModelEnum.ROTATION,
-        "ins-40.dzn",
+        ModelEnum.BASE,
+        "ins-5.dzn",
         solver=SolverEnum.CHUFFED,
         free_search=True,
         plots=True,
