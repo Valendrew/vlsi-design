@@ -6,6 +6,7 @@ sys.path.append("./")
 
 from utils.smt_utils import extract_input_from_txt, get_w_and_h_from_txt, check_smt_parameters
 from utils.plot import plot_cmap
+from utils.types import ModelType
 
 from pysmt.shortcuts import Symbol, INT, And, GE, LE, Int, Or, Solver, NotEquals, get_env
 from pysmt.logics import LIA, QF_IDL
@@ -58,7 +59,8 @@ def build_base_model(W, N, widths, heights):
 
 def run_solver(name, logic, formula, vars, solver_options, l_up):
     l_var, cx_var, cy_var = vars
-    timeout = solver_options['timeout'] if 'timeout' in solver_options else 300
+    # This is the timeout value in seconds
+    timeout = solver_options['timeout']/1000 if 'timeout' in solver_options else 300
 
     solver = Solver(name=name, logic=logic, solver_options=solver_options)
     solver.add_assertion(formula)
@@ -80,11 +82,13 @@ def run_solver(name, logic, formula, vars, solver_options, l_up):
                 solution = {'l': l, 'coord_x':coord_x, 'coord_y': coord_y}
             solver.add_assertion(NotEquals(l_var, Int(l)))
         else:
-            print('Search is terminated.')
+            print(f'Search is terminated.')
             break
+    end_time = time.perf_counter()
     if solution['l'] == l_up:
         print("No solutions found")
-    
+    else:
+        print(f"Best solution found is {solution['l']} in {end_time-start_time} seconds.")
     return solution
     
 
@@ -97,11 +101,14 @@ if __name__ == "__main__":
     timeout = params['timeout']
     rotation = params['rotation']
     allowed_logics = [LIA, QF_IDL]
+    plot_file = plot_path.format(model=ModelType.BASE.value, file=instance_file.split(".")[0])
 
     W, N, widths, heights = extract_input_from_txt(data_path['txt'], instance_file)
     if not rotation:
+        model_type = "base"
         formula, vars = build_base_model(W, N, widths, heights)
     else:
+        model_type = "rotation"
         print("Not supported yet")
         #formula, vars = build_rotation_model(W, N, widths, heights)
 
@@ -110,14 +117,20 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if solver_name != 'z3':
-        sol_path = solvers_path[solver_name]
+        print("Work in progress")
+        '''sol_path = solvers_path[solver_name]
         env = get_env()
         env.factory.add_generic_solver(solver_name, sol_path, allowed_logics)
 
         solution = run_solver(solver_name, logic, formula, vars, solver_options={}, l_up=sum(heights))
-        print(solution)
+        print(solution)'''
     else:
-        solution = run_solver(solver_name, logic, formula, vars, solver_options={"timeout":timeout*1000}, l_up=sum(heights))
-        print(solution)
-    #plot_cmap(W, sol['l'], N, get_w_and_h_from_txt(instance_file), {'x':sol['coord_x'],'y':sol['coord_y']}, "./ins-15.png", rotation=None, cmap_name="Set3")'''
+        solution = run_solver(
+                        solver_name, logic, formula, vars, solver_options={"timeout":timeout*1000}, l_up=sum(heights)
+                    )
+
+    plot_cmap(
+        W, solution['l'], N, get_w_and_h_from_txt(instance_file), {'x': solution['coord_x'], 'y': solution['coord_y']},
+            plot_file, rotation=None, cmap_name="Set3"
+    )
 

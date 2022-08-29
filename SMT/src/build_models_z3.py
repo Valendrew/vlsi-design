@@ -5,8 +5,8 @@ import z3
 import sys
 sys.path.append("./")
 
-from utils.smt_utils import extract_input_from_txt, z3_parse_solution, get_w_and_h_from_txt
-from utils.types import SolverSMT, LogicSMT, ModelEnum
+from utils.smt_utils import extract_input_from_txt, z3_parse_solution, get_w_and_h_from_txt, check_smt_parameters
+from utils.types import SolverSMT, LogicSMT, ModelType
 from utils.plot import plot_cmap
 
 root_path = "./SMT"
@@ -63,7 +63,7 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
 
 def run_solver(heights, timeout=300):
     solver = z3.Solver()
-    solver.set(timeout=timeout*1000)
+    solver.set(timeout=timeout*1000, auto_config=True)
     smt_mod = z3.parse_smt2_file(f"{root_path}/src/model.smt2")
     solver.add(smt_mod)
 
@@ -107,16 +107,34 @@ def run_solver(heights, timeout=300):
         print("No solutions found within the time limit")
         return None, None, None
 
-if __name__ == "__main__":
 
-    instance_file = "ins-11.txt"
-    plot_file = plot_path.format(model=ModelEnum.BASE.value, file=instance_file.split(".")[0])
+
+if __name__ == "__main__":
+    params = check_smt_parameters(data_path['txt'])
+    solver_name = params['solver_name']
+    logic = params['logic']
+    instance_file = params['instance_val']
+    timeout = params['timeout']
+    rotation = params['rotation']
+
+    plot_file = plot_path.format(model=ModelType.BASE.value, file=instance_file.split(".")[0])
 
     W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
-    build_SMTLIB_model(W, N, widths, heights, logic=LogicSMT.LIA.value)
-    l, coord_x, coord_y = run_solver(heights)
-    circuits = get_w_and_h_from_txt(instance_file)
-    if l is not None:
-        plot_cmap(
-                W, l, N, circuits, {"x": coord_x, "y": coord_y}, plot_file, cmap_name="turbo_r"
+
+    if not rotation:
+        model_type = "base"
+        build_SMTLIB_model(W, N, widths, heights, logic=LogicSMT.LIA.value)
+    else:
+        model_type = "rotation"
+        print("Not supported yet")
+        #build_SMTLIB_model_rot(W, N, widths, heights, logic=LogicSMT.LIA.value)
+
+    if solver_name != 'z3':
+        print("Work in progress")
+    else:
+        l, coord_x, coord_y = run_solver(heights)
+        if l is not None:
+            plot_cmap(
+                W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
+                    plot_file, rotation=None, cmap_name="Set3"
             )
