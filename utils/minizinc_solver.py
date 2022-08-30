@@ -6,18 +6,13 @@ from utils.types import InputMode, ModelType, RunType, SolverMinizinc, StatusEnu
 from datetime import timedelta
 
 
-def compute_solve_time(result: Result) -> str:
-    ex_time = (
-        result.statistics["solveTime"].total_seconds()
-        + result.statistics["initTime"].total_seconds()
-    )
-
+def compute_solve_time(ex_time: float) -> str:
     magnitude = "s"
     if (ex_time) < 0.01:
         ex_time *= 1000
         magnitude = "ms"
 
-    return f"{ex_time} {magnitude}"
+    return f"{ex_time:.6f} {magnitude}"
 
 
 def get_minizinc_solution(
@@ -38,7 +33,11 @@ def get_minizinc_solution(
     sol.width = instance.__getitem__("W")
     sol.rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
 
-    sol.solve_time = compute_solve_time(result)
+    ex_time = (
+        result.statistics["solveTime"].total_seconds()
+        + result.statistics["initTime"].total_seconds()
+    )
+    sol.solve_time = compute_solve_time(ex_time)
     return sol
 
 
@@ -71,7 +70,7 @@ def run_minizinc(
         if not hasattr(result, "solution") or (result.solution is None):
             # TODO handle statistics when -1 is returned
             sol = Solution
-            sol.status = StatusEnum.NO_SOLUTION
+            sol.status = StatusEnum.INFEASIBLE
             return sol
 
         return get_minizinc_solution(result, instance, input_name), result

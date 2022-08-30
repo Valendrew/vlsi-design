@@ -42,8 +42,9 @@ class InputMode(Enum):
 
 class StatusEnum(Enum):
     OPTIMAL: int = 1
-    NO_SOLUTION: int = -1
-    ERROR: int = 0
+    NOT_SOLVED:int = 0
+    INFEASIBLE: int = -1
+    ERROR: int = -2
 
 
 class StatisticMode(Enum):
