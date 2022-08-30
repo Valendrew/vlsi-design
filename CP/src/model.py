@@ -53,6 +53,7 @@ def compute_solution(
 
 
 # Compute the solution for the desired number of instances and with the desired solver
+# TODO move as a decorator function for other solvers
 def compute_tests(
     test_instances,
     input_mode: InputMode,
@@ -75,7 +76,6 @@ def compute_tests(
         return -1
 
     statistics_path = format_statistic_file(run_type, output_name, model_type)
-    print(statistics_path)
 
     for i in test_iterator:
         sol, result = compute_solution(
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     if save_stats:
         compute_tests(
-            (1, 10),
+            (1, 20),
             input_mode,
             model_type,
             solver,

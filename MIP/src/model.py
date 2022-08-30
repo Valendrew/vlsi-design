@@ -1,10 +1,9 @@
 import math
-from turtle import pu
 
 import pulp
 import mosek
 
-from utils.formatting import format_data_file, format_plot_file
+from utils.formatting import format_data_file, format_plot_file, format_statistic_file
 from utils.logging import print_logging
 from utils.smt_utils import extract_input_from_txt
 from utils.plot import plot_cmap
@@ -87,7 +86,6 @@ def run_mip_solver(
 
     sol.input_name = input_name
     sol.width = W
-    # FIXME change to proper solve time
     sol.n_circuits = N
     sol.circuits = [[widths[i], heights[i]] for i in range(N)]
     sol.rotation = None if model_type == ModelType.ROTATION else None
@@ -136,20 +134,13 @@ def run_mip_solver(
     return sol
 
 
-if __name__ == "__main__":
-    # TODO change as input of script
-    input_name: str = "ins-2"
-    model_type: ModelType = ModelType.BASE
-
-    # solvers
-    # solver: SolverMIP = SolverMIP.MINIZINC
-    solver: SolverMIP = SolverMIP.MOSEK
-    # solver: SolverMIP = SolverMIP.CPLEX
-
-    # optional inputs
-    verbose: bool = True
-    timeout: int = 300
-
+def compute_solution(
+    input_name: str,
+    model_type: ModelType,
+    solver: SolverMIP,
+    timeout: int,
+    verbose: bool,
+):
     # plot path
     plot_file = format_plot_file(
         run_type, input_name, model_type, solver=solver.name.lower()
@@ -185,3 +176,54 @@ if __name__ == "__main__":
             sol.rotation,
             "turbo_r",
         )
+
+
+def compute_tests(
+    test_instances,
+    model_type: ModelType,
+    solver: SolverMIP,
+    timeout: int,
+    verbose: bool,
+):
+    output_name = f"{solver.value}_{min(test_instances)}_{max(test_instances)}"
+
+    # If instances must be treated as a range
+    if isinstance(test_instances, tuple):
+        test_iterator = range(test_instances[0], test_instances[1] + 1)
+    # If explicits instances are passed as a list
+    elif isinstance(test_instances, list):
+        output_name += "_uncontinguous"
+        test_iterator = test_instances
+    else:
+        return -1
+
+    statistics_path = format_statistic_file(run_type, output_name, model_type)
+
+    for i in test_iterator:
+        compute_solution(f"ins-{i}", model_type, solver, timeout, verbose)
+        print(f"- Computed a solution for instance {i}.\n")
+        # TODO save statistics for MIP
+        # save_statistics(statistics_path, result, i)
+
+
+if __name__ == "__main__":
+    # TODO change as input of script
+    input_name: str = "ins-10"
+    model_type: ModelType = ModelType.BASE
+
+    # solvers
+    # solver: SolverMIP = SolverMIP.MINIZINC
+    solver: SolverMIP = SolverMIP.MOSEK
+    # solver: SolverMIP = SolverMIP.CPLEX
+
+    # optional inputs
+    verbose: bool = True
+    timeout: int = 300
+
+    # statistics
+    save_stats = True
+    if save_stats:
+        test_instances = [10]
+        compute_tests(test_instances, model_type, solver, timeout, verbose)
+    else:
+        compute_solution(input_name, model_type, solver, verbose, timeout)
