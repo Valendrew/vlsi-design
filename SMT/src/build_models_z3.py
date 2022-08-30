@@ -6,6 +6,7 @@ import sys
 sys.path.append("./")
 
 from utils.smt_utils import extract_input_from_txt, z3_parse_solution, get_w_and_h_from_txt, check_smt_parameters
+from utils.smt_utils import offline_omt
 from utils.types import SolverSMT, LogicSMT, ModelType
 from utils.plot import plot_cmap
 
@@ -47,11 +48,34 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
                                          f"(<= (+ coord_y{i} {heights[i]}) coord_y{j}) "
                                          f"(>= (- coord_x{i} {widths[j]}) coord_x{j}) "
                                          f"(>= (- coord_y{i} {heights[j]}) coord_y{j})))"
-                            )
+                )
 
     # Boundary constraints
     lines += [f"(assert (and (<= (+ coord_x{i} {widths[i]}) {W}) (<= (+ coord_y{i} {heights[i]}) l)))" for i in range(N)]
 
+    
+    # Cumulative constraints 
+    for w in widths:
+        sum_var = [f"(ite (and (<= coord_y{i} {w}) (< {w} (+ coord_y{i} {heights[i]}))) {widths[i]} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) {W}))")
+
+    for h in heights:
+        sum_var = [f"(ite (and (<= coord_x{i} {h}) (< {h} (+ coord_x{i} {widths[i]}))) {heights[i]} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) l))")
+
+    # Symmetry breaking
+    for i in range(N):
+        for h in range(N):
+            if i < j:
+                lines.append(f"(assert (=> (= {widths[i]} {widths[j]}) (ite (= coord_x{i} coord_x{j}) "
+                                        f"(>= coord_y{j} coord_y{i}) (> coord_x{j} coord_x{i}))))"
+                )
+
+    # Symmetry breaking same size 
+    for i in range(N):
+        for j in range(N):
+            if i < j:
+                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (<= coord_x{i} coord_x{j}) true))")
 
     lines.append("(check-sat)")
     lines.append("(get-model)")
@@ -60,7 +84,7 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
         for line in lines:
             f.write(line + '\n')
 
-
+'''
 def run_solver(heights, timeout=300):
     solver = z3.Solver()
     solver.set(timeout=timeout*1000, auto_config=True)
@@ -106,7 +130,7 @@ def run_solver(heights, timeout=300):
     else:
         print("No solutions found within the time limit")
         return None, None, None
-
+'''
 
 
 if __name__ == "__main__":
@@ -132,9 +156,23 @@ if __name__ == "__main__":
     if solver_name != 'z3':
         print("Work in progress")
     else:
-        l, coord_x, coord_y = run_solver(heights)
-        if l is not None:
+        solver = z3.Solver()
+        solver.set(timeout=timeout*1000)
+        formula = z3.parse_smt2_file(f"{root_path}/src/model.smt2")
+        solver.add(formula)
+
+        l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+        
+        solution = offline_omt(solver, l_low, sum(heights), timeout)
+
+        if len(solution[0].keys()) != 0:
+            l, coord_x, coord_y = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y']
+            sol_time = solution[1]
+            print(f"l is {l}, found in {sol_time} seconds.")
             plot_cmap(
                 W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
                     plot_file, rotation=None, cmap_name="Set3"
             )
+        else:
+            print(f"Something goes wrong.")
+            sys.exit(1)            

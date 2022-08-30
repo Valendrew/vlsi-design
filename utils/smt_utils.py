@@ -1,5 +1,8 @@
 import argparse
+import time
 from os.path import exists, join, splitext
+
+import z3
 
 txt_instances = "./vlsi-instances/txt-instances"
 
@@ -60,6 +63,7 @@ def check_file(parser, path, data_path):
         else:
             parser.error(f"The instance file doesn't exist in the current path: {data_path.format(file=path)}.")
 
+
 # Check the parameters given to the script
 def check_smt_parameters(data_path):
     p = argparse.ArgumentParser()
@@ -77,3 +81,74 @@ def check_smt_parameters(data_path):
     args = p.parse_args()
     param = dict(args._get_kwargs())
     return param
+
+
+# It returns the solution found by the solver on the current formula
+def run_solver_once(solver, last_opt):
+
+    solution = {"solution":{"l": last_opt, "coord_x":[], "coord_y":[]}, "l_var": None}
+    res = solver.check()
+
+    if res == z3.unsat:
+        print("Unsat therefore search interrupted.")
+        return None
+    if res == z3.unknown:
+        if solver.reason_unknown() == "timeout":
+            print("Timeout reached, search stopped.")
+            return None
+        else:
+            print("Error during the search, unknown status returned.")
+            return None
+
+    last_model = solver.model()
+    l_ind = [str(m) for m in last_model].index('l')
+    l_var = last_model[l_ind]
+    
+    l, coord_x, coord_y = z3_parse_solution(last_model)
+    solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y}
+    solution['l_var'] = l_var
+
+    return solution
+
+
+# Offline OMT implementation for finding the minimum value of l
+def offline_omt(solver, l_low, l_up, timeout):
+    low, up = l_low, l_up
+    opt_sol = {}
+
+    start_time = time.perf_counter()
+    i = 0
+    # Start binary search
+    while low < up:
+        l_guess = (low + up)//2
+
+        if i > 0:
+            check_time = time.perf_counter()
+            new_timeout = int(timeout*1000-(check_time-start_time)*1000)
+            if new_timeout < 0:
+                print("Timeout reached, search stopped.")
+                return opt_sol
+            solver.set("timeout", new_timeout)
+
+        curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
+        curr_sol = run_solver_once(solver, curr_l)
+        if curr_sol != None:
+            if curr_sol['solution']['l'] < curr_l:
+                opt_sol = curr_sol['solution']
+                print(f"Found solution with l={opt_sol['l']}, low={low} - up={up}")
+            l_var = curr_sol['l_var']
+            up = l_guess
+            # Add constraints to l
+            print(f"Add constraint l < {up}")
+            if i > 0:
+                solver.pop()
+            solver.push()
+            solver.add(l_var() < up)
+        else:
+            # TODO: could we put low = l
+            low = l_guess + 1
+            print(f"No solution")
+        i += 1
+    end_time = time.perf_counter()
+
+    return opt_sol, (end_time-start_time)
