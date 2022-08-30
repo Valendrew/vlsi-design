@@ -5,6 +5,7 @@ channels:
   - defaults
 dependencies:
   - conda
+  - mosek
   - pandas
   - pip
   - python=3.8
