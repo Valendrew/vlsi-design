@@ -35,7 +35,7 @@ def plot_cmap(width, height, n, circuits, coords, path, rotation=None, cmap_name
     cmap = plt.cm.get_cmap(cmap_name, n)
     patches = []
     
-    rotation = [0 for _ in range(n)] if rotation is None else rotation
+    rotation = [0 for _ in range(n)] if (rotation is None) or (len(rotation)==0) else rotation
     for i in range(0,n):
         circ_width = int(circuits[i][0]) if rotation[i]==0 else int(circuits[i][1])
         circ_height = int(circuits[i][1]) if rotation[i]==0 else int(circuits[i][0])

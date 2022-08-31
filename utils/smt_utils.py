@@ -2,6 +2,8 @@ import argparse
 import time
 from os.path import exists, join, splitext
 
+from utils.types import ModelType
+
 import z3
 
 txt_instances = "./vlsi-instances/txt-instances"
@@ -21,19 +23,19 @@ def extract_input_from_txt(data_path, file_instance):
 
 
 # Parse the solution returned by the z3 solver
-def z3_parse_solution(data):
+def z3_parse_solution(data, model_type):
     # Sort the array considering the number of the variables in order to pair x and y
     sort_key = lambda x: int(x[0][7:])
 
     pairs = dict([(str(m), str(data[m()])) for m in data])
     coord_x = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_x")], key=sort_key)
     coord_y = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_y")], key=sort_key)
-
+    rotation = sorted([(n, v) for n, v in pairs.items() if n.startswith("rot")], key=sort_key) if model_type == ModelType.ROTATION.value else None
     l = int(pairs['l'])
     coord_x = [val[1] for val in coord_x]
     coord_y = [val[1] for val in coord_y]
-
-    return l, coord_x, coord_y
+    rotation = [val[1] for val in rotation] if rotation is not None else None
+    return l, coord_x, coord_y, rotation
 
 
 # It returns widths and heights from the txt instance 
@@ -86,11 +88,15 @@ def check_smt_parameters(data_path):
 
 
 # It returns the solution found by the solver on the current formula
-def run_solver_once(solver, verbose):
+def run_solver_once(solver, model_type, verbose):
     vprint = print if verbose else lambda *a, **k: None
-    solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[]}, "l_var": None}
-    res = solver.check()
 
+    if model_type == ModelType.BASE.value:
+        solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[]}, "l_var": None}
+    else:
+        solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[], "rotation": []}, "l_var": None}
+
+    res = solver.check()
     if res == z3.unsat:
         vprint("Unsat therefore search interrupted.")
         return None
@@ -106,15 +112,15 @@ def run_solver_once(solver, verbose):
     l_ind = [str(m) for m in last_model].index('l')
     l_var = last_model[l_ind]
     
-    l, coord_x, coord_y = z3_parse_solution(last_model)
-    solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y}
+    l, coord_x, coord_y, rotation = z3_parse_solution(last_model, model_type)
+    solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y , 'rotation': rotation}
     solution['l_var'] = l_var
 
     return solution
 
 
 # Offline OMT implementation for finding the minimum value of l
-def offline_omt(solver, l_low, l_up, timeout, verbose):
+def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
     vprint = print if verbose else lambda *a, **k: None
 
     low, up = l_low, l_up
@@ -135,7 +141,7 @@ def offline_omt(solver, l_low, l_up, timeout, verbose):
             solver.set("timeout", new_timeout)
 
         curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
-        curr_sol = run_solver_once(solver, verbose)
+        curr_sol = run_solver_once(solver, model_type, verbose)
         if curr_sol != None:
             if curr_sol['solution']['l'] < curr_l:
                 opt_sol = curr_sol['solution']
