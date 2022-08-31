@@ -41,10 +41,16 @@ class InputMode(Enum):
 
 
 class StatusEnum(Enum):
-    OPTIMAL: int = 1
-    NOT_SOLVED:int = 0
-    INFEASIBLE: int = -1
-    ERROR: int = -2
+    FEASIBLE = 2
+    OPTIMAL = 1
+    NO_SOLUTION_FOUND = 0
+    INFEASIBLE = -1
+    UNBOUNDED = -2
+    ERROR = -3
+
+
+def SOLUTION_ADMISSABLE(x: StatusEnum):
+    return x in [StatusEnum.OPTIMAL, StatusEnum.FEASIBLE]
 
 
 class StatisticMode(Enum):
