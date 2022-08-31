@@ -1,7 +1,10 @@
 import math
+from operator import truediv
 
 import pulp
 import mosek
+
+import numpy as np
 
 from utils.formatting import format_data_file, format_plot_file, format_statistic_file
 from utils.logging import print_logging
@@ -29,7 +32,7 @@ def build_pulp_model(W: int, N: int, widths, heights):
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
 
     # Lower and upper bounds for the height
-    l_low = int(math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W))
+    l_low = math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
     l_up = int(sum(heights))
 
     # Height variable
@@ -47,46 +50,51 @@ def build_pulp_model(W: int, N: int, widths, heights):
         "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
     )
 
+    # Boundary constraints
+    for i in set_N:
+        prob += coord_x[i] + widths[i] <= W
+        prob += coord_y[i] + heights[i] <= l
+
     # Booleans for OR condition
     set_C = range(2)
     delta = pulp.LpVariable.dicts(
-        "delta", indices=(set_N, set_N, set_C), cat=pulp.LpInteger, lowBound=0, upBound=1
+        "delta",
+        indices=(set_N, set_N, set_C),
+        cat=pulp.LpBinary,
+        lowBound=0,
+        upBound=1,
     )
 
     # Non-Overlap constraints, at least one needs to be satisfied
     for i in set_N:
         for j in set_N:
             if i < j:
-                prob += coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
+                """ prob += coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
                 prob += coord_x[j] + widths[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
-
                 prob += (
                     coord_y[i] + heights[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
                 )
                 prob += (
                     coord_y[j] + heights[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
-                )
+                ) """
 
-                prob += delta[i][j][0] + delta[j][i][0] <= 1
-                prob += delta[i][j][1] + delta[j][i][1] <= 1
+                prob += coord_x[i] + widths[i] <= coord_x[j] + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
+                prob += coord_x[j] + widths[j] <= coord_x[i] + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
 
                 prob += (
-                    1
-                    <= delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
+                    coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][0] + delta[j][i][0] + delta[j][i][1]) * l_up
                 )
+                prob += (
+                    coord_y[j] + heights[j] <= coord_y[i] + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
+                )                    
+                
+                prob += delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1] == 1
 
-    # Symmetry breaking
-    # psi = pulp.LpVariable.dicts("psi", indices=(set_N, set_N, set_C), cat=pulp.LpInteger, lowBound=0, upBound=1)
 
-    for i in set_N:
-        for j in set_N:
-            if i < j:
-                pass
+    max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
+    prob += coord_x[max_circuit] == 0
+    prob += coord_y[max_circuit] == 0
 
-    # Boundary constraints
-    for i in set_N:
-        prob += coord_x[i] + widths[i] <= W
-        prob += coord_y[i] + heights[i] <= l
     return prob
 
 
@@ -111,7 +119,7 @@ def run_mip_solver(
     prob: pulp.LpProblem = build_pulp_model(W, N, widths, heights)
 
     if solver == SolverMIP.CPLEX:
-        solver = pulp.CPLEX_PY(mip=True, msg=solver_verbose, timeLimit=timeout)
+        solver = pulp.CPLEX_CMD(mip=True, msg=solver_verbose, timeLimit=timeout, options=["set preprocessing symmetry -1"], warmStart=True)
     elif solver == SolverMIP.MOSEK:
         options = {
             # mosek.iparam.num_threads: 8,
@@ -129,21 +137,22 @@ def run_mip_solver(
         return sol
 
     sol.status = StatusEnum(prob.sol_status)
-
     sol.solve_time = compute_solve_time(prob.solutionTime)
-    sol.height = int(pulp.value(prob.objective))
 
-    coords = {"x": [None] * N, "y": [None] * N}
-    for v in prob.variables():
-        # print(f"{v.name}: {v.value()}")
-        if "coord_x" in v.name:
-            ind = int(v.name.split("coord_x_")[1])
-            coords["x"][ind] = math.ceil(v.varValue)
-        elif "coord_y" in v.name:
-            ind = int(v.name.split("coord_y_")[1])
-            coords["y"][ind] = math.ceil(v.varValue)
+    if SOLUTION_ADMISSABLE(sol.status):
+        sol.height = int(pulp.value(prob.objective))
 
-    sol.coords = coords
+        coords = {"x": [None] * N, "y": [None] * N}
+        for v in prob.variables():
+            # print(f"{v.name}: {v.value()}")
+            if "coord_x" in v.name:
+                ind = int(v.name.split("coord_x_")[1])
+                coords["x"][ind] = round(v.varValue)
+            elif "coord_y" in v.name:
+                ind = int(v.name.split("coord_y_")[1])
+                coords["y"][ind] = round(v.varValue)
+
+        sol.coords = coords
     return sol
 
 
@@ -215,7 +224,9 @@ def compute_tests(
 
     for i in test_iterator:
         sol = compute_solution(f"ins-{i}", model_type, solver, timeout, verbose)
-        print(f"\n- Computed instance {i}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else None}")
+        print(
+            f"\n- Computed instance {i}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}"
+        )
 
         # TODO save statistics for MIP
         # save_statistics(statistics_path, result, i)
@@ -223,7 +234,7 @@ def compute_tests(
 
 if __name__ == "__main__":
     # TODO change as input of script
-    input_name: str = "ins-19"
+    input_name: str = "ins-12"
     model_type: ModelType = ModelType.BASE
 
     # solvers
@@ -233,12 +244,13 @@ if __name__ == "__main__":
 
     # optional inputs
     verbose: bool = True
-    timeout: int = 10
+    timeout: int = 300
 
     # statistics
-    save_stats = False
+    save_stats = True
     if save_stats:
-        test_instances = (1, 5)
+        test_instances = [18]
+        # test_instances = (1, 40)
         compute_tests(test_instances, model_type, solver, timeout, False)
     else:
         compute_solution(input_name, model_type, solver, timeout, verbose)

@@ -106,8 +106,9 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
     lines.append("(declare-fun l () Int)")
 
     # Domain of variables
-    lines += [f"(assert (and (>= coord_x{i} 0) (<= coord_x{i} {W-min(widths + heights)})))" for i in range(N)]
-    lines += [f"(assert (and (>= coord_y{i} 0) (<= coord_y{i} {l_up-min(heights + widths)})))" for i in range(N)]
+    coord_up = min(min(widths), min(heights))
+    lines += [f"(assert (and (>= coord_x{i} 0) (<= coord_x{i} {W-coord_up})))" for i in range(N)]
+    lines += [f"(assert (and (>= coord_y{i} 0) (<= coord_y{i} {l_up-coord_up})))" for i in range(N)]
     lines += [f"(assert (ite rot{i} (= w_real{i} {heights[i]}) (= w_real{i} {widths[i]})))" for i in range(N)]
     lines += [f"(assert (ite rot{i} (= h_real{i} {widths[i]}) (= h_real{i} {heights[i]})))" for i in range(N)]
 

@@ -9,3 +9,4 @@ __pycache__/
 # Ignore all the csv and png files
 *.png
 *.csv
+*.log
