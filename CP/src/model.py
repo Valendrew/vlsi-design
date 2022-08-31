@@ -87,7 +87,7 @@ def compute_tests(
 
 if __name__ == "__main__":
     # TODO change as input of script
-    input_name: str = "ins-5"
+    input_name: str = "ins-9"
     input_mode = InputMode.DZN
     model_type: ModelType = ModelType.BASE
     solver = SolverMinizinc.CHUFFED
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     # TODO add specific type
     test_range = (1, 10)
-    save_stats = True
+    save_stats = False
 
     if save_stats:
         compute_tests(

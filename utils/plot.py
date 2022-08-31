@@ -48,3 +48,4 @@ def plot_cmap(width, height, n, circuits, coords, path, rotation=None, cmap_name
     plt.xticks(np.arange(0, width+1, step=1))
     plt.yticks(np.arange(0, height+1, step=1))
     plt.savefig(path, bbox_inches="tight")
+    plt.close(fig)
