@@ -1,7 +1,7 @@
 from typing import Tuple
 from minizinc import Instance, Model, Solver, Result
 from utils.formatting import format_data_file, format_model_file
-from utils.logging import Solution, print_logging
+from utils.solution_log import Solution, print_logging
 from utils.types import InputMode, ModelType, RunType, SolverMinizinc, StatusEnum
 from datetime import timedelta
 

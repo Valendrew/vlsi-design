@@ -26,11 +26,12 @@ def extract_input_from_txt(data_path, file_instance):
 def z3_parse_solution(data, model_type):
     # Sort the array considering the number of the variables in order to pair x and y
     sort_key = lambda x: int(x[0][7:])
+    sort_key_rot = lambda x: int(x[0][3:])
 
     pairs = dict([(str(m), str(data[m()])) for m in data])
     coord_x = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_x")], key=sort_key)
     coord_y = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_y")], key=sort_key)
-    rotation = sorted([(n, v) for n, v in pairs.items() if n.startswith("rot")], key=sort_key) if model_type == ModelType.ROTATION.value else None
+    rotation = sorted([(n, v) for n, v in pairs.items() if n.startswith("rot")], key=sort_key_rot) if model_type == ModelType.ROTATION.value else None
     l = int(pairs['l'])
     coord_x = [val[1] for val in coord_x]
     coord_y = [val[1] for val in coord_y]

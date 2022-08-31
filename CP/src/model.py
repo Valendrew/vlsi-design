@@ -2,7 +2,7 @@ from distutils.command.config import config
 from os.path import join as join_path
 
 from utils.formatting import format_plot_file, format_statistic_file
-from utils.logging import print_logging
+from utils.solution_log import print_logging
 
 
 from utils.plot import plot, plot_cmap

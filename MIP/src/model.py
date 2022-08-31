@@ -7,7 +7,7 @@ import mosek
 import numpy as np
 
 from utils.formatting import format_data_file, format_plot_file, format_statistic_file
-from utils.logging import print_logging
+from utils.solution_log import print_logging
 from utils.smt_utils import extract_input_from_txt
 from utils.plot import plot_cmap
 from utils.minizinc_solver import compute_solve_time, run_minizinc

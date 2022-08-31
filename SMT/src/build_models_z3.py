@@ -106,7 +106,7 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
     lines.append("(declare-fun l () Int)")
 
     # Domain of variables
-    coord_up = min(min(widths), min(heights))
+    coord_up = min(widths + heights)
     lines += [f"(assert (and (>= coord_x{i} 0) (<= coord_x{i} {W-coord_up})))" for i in range(N)]
     lines += [f"(assert (and (>= coord_y{i} 0) (<= coord_y{i} {l_up-coord_up})))" for i in range(N)]
     lines += [f"(assert (ite rot{i} (= w_real{i} {heights[i]}) (= w_real{i} {widths[i]})))" for i in range(N)]
@@ -199,7 +199,11 @@ if __name__ == "__main__":
     else:
         solver = z3.Solver()
         solver.set(timeout=timeout*1000)
-        formula = z3.parse_smt2_file(f"{root_path}/src/model.smt2")
+        if rotation:
+            model_filename = "model_rot.smt2"
+        else:
+            model_filename = "model.smt2"
+        formula = z3.parse_smt2_file(f"{root_path}/src/{model_filename}")
         solver.add(formula)
 
         l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
