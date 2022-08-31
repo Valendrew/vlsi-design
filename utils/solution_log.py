@@ -21,7 +21,7 @@ def print_logging(solution: Solution):
         print(GENERIC_MSG)
 
     if SOLUTION_ADMISSABLE(solution.status):
-        # Printing logging    
+        # Printing logging
         print(
             f"Solved {solution.input_name} with W={solution.width} and H={solution.height}"
         )

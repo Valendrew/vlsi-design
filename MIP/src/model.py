@@ -1,12 +1,11 @@
-import math
-from operator import truediv
-
+import logging
+import sys
 import pulp
 import mosek
 
-import numpy as np
 
 from utils.formatting import format_data_file, format_plot_file, format_statistic_file
+from utils.mip_utils import check_admissable_timeout, check_mip_solver_exists, parse_mip_argument
 from utils.solution_log import print_logging
 from utils.smt_utils import extract_input_from_txt
 from utils.plot import plot_cmap
@@ -22,80 +21,9 @@ from utils.types import (
     StatusEnum,
 )
 
+from create_model import build_pulp_model
+
 run_type: RunType = RunType.MIP
-
-
-# We append to the string all the script to avoid writing it manually
-def build_pulp_model(W: int, N: int, widths, heights):
-    # LpVariable() for new variables
-    # LpProblem() for new problems
-    prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
-
-    # Lower and upper bounds for the height
-    l_low = math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
-    l_up = int(sum(heights))
-
-    # Height variable
-    l = pulp.LpVariable("l", lowBound=l_low, upBound=l_up, cat=pulp.LpInteger)
-    prob += l
-
-    # Coordinate variables
-    set_N = range(N)
-    cx_up = int(W - min(widths))
-    cy_up = int(l_up - min(heights))
-    coord_x = pulp.LpVariable.dicts(
-        "coord_x", indices=set_N, lowBound=0, upBound=cx_up, cat=pulp.LpInteger
-    )
-    coord_y = pulp.LpVariable.dicts(
-        "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
-    )
-
-    # Boundary constraints
-    for i in set_N:
-        prob += coord_x[i] + widths[i] <= W
-        prob += coord_y[i] + heights[i] <= l
-
-    # Booleans for OR condition
-    set_C = range(2)
-    delta = pulp.LpVariable.dicts(
-        "delta",
-        indices=(set_N, set_N, set_C),
-        cat=pulp.LpBinary,
-        lowBound=0,
-        upBound=1,
-    )
-
-    # Non-Overlap constraints, at least one needs to be satisfied
-    for i in set_N:
-        for j in set_N:
-            if i < j:
-                """ prob += coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
-                prob += coord_x[j] + widths[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
-                prob += (
-                    coord_y[i] + heights[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
-                )
-                prob += (
-                    coord_y[j] + heights[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
-                ) """
-
-                prob += coord_x[i] + widths[i] <= coord_x[j] + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
-                prob += coord_x[j] + widths[j] <= coord_x[i] + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
-
-                prob += (
-                    coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][0] + delta[j][i][0] + delta[j][i][1]) * l_up
-                )
-                prob += (
-                    coord_y[j] + heights[j] <= coord_y[i] + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                )                    
-                
-                prob += delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1] == 1
-
-
-    max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
-    prob += coord_x[max_circuit] == 0
-    prob += coord_y[max_circuit] == 0
-
-    return prob
 
 
 def run_mip_solver(
@@ -233,23 +161,25 @@ def compute_tests(
 
 
 if __name__ == "__main__":
+    parser_args = parse_mip_argument()
     # TODO change as input of script
-    input_name: str = "ins-12"
-    model_type: ModelType = ModelType.BASE
-
-    # solvers
-    # solver: SolverMIP = SolverMIP.MINIZINC
-    # solver: SolverMIP = SolverMIP.MOSEK
-    solver: SolverMIP = SolverMIP.CPLEX
-
-    # optional inputs
-    verbose: bool = True
-    timeout: int = 300
+    input_name: str = parser_args["instance"]
+    model_type: ModelType = ModelType(parser_args["model"])
+    solver: SolverMIP = SolverMIP(parser_args["solver"])
+    timeout: int = parser_args["timeout"]
+    verbose: bool = parser_args["verbose"]
 
     # statistics
-    save_stats = True
+    save_stats = False
+
+    if not check_mip_solver_exists(solver):
+        logging.error(f"{solver.name} not available in the current system")
+        sys.exit(2)
+    if not check_admissable_timeout(timeout):
+        logging.error("Timeout out of range")
+        sys.exit(2)
     if save_stats:
-        test_instances = [18]
+        test_instances = [5]
         # test_instances = (1, 40)
         compute_tests(test_instances, model_type, solver, timeout, False)
     else:

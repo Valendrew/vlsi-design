@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import TypedDict, List
 
+DEFAULT_TIMEOUT = 300
 
 class RunType(Enum):
     CP: str = "CP"
@@ -20,8 +21,8 @@ class SolverMinizinc(Enum):
 
 
 class SolverMIP(Enum):
-    CPLEX: str = "CPLEX_PY"
-    MOSEK: str = "MOSEK"
+    CPLEX: str = "cplex"
+    MOSEK: str = "mosek"
     MINIZINC: str = "minizinc"
 
 

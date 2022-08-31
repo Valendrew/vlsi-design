@@ -1,19 +1,16 @@
-import os
-from os.path import join as join_path
-from tracemalloc import Statistic
+from os import makedirs
+from os.path import join as join_path, exists
+import logging 
 
 from utils.types import InputMode, ModelType, RunType, StatisticMode
 
-import sys
-sys.path.append("./")
-
-
-#  TODO change run_type as a global config instead as a parameter of the function
-
-
 def format_data_file(file: str, mode: InputMode):
-    return f"./vlsi-instances/{mode.value}-instances/{file}.{mode.value}"
-
+    file_path = f"./vlsi-instances/{mode.value}-instances/{file}.{mode.value}"
+    if exists(file_path):
+        return file_path
+    else:
+        logging.error("The file doesn't exist, provide a valid one")
+        raise FileNotFoundError
 
 def format_plot_file(
     run_type: RunType, file: str, model_type: ModelType, solver: str = None
@@ -30,7 +27,7 @@ def format_plot_file(
     else:
         plot_path = join_path(run_type.value, f"out/plots/{model_type.value}/{file}")
 
-    os.makedirs(plot_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
+    makedirs(plot_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
     return plot_path
 
 
@@ -56,5 +53,5 @@ def format_statistic_file(
             f"out/statistics/{model_type.value}/{file}.{stats_ext.value}",
         )
 
-    os.makedirs(statistic_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
+    makedirs(statistic_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
     return statistic_path
