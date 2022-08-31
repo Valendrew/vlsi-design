@@ -63,19 +63,18 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
         sum_var = [f"(ite (and (<= coord_x{i} {h}) (< {h} (+ coord_x{i} {widths[i]}))) {heights[i]} 0)" for i in range(N)]
         lines.append(f"(assert (<= (+ {' '.join(sum_var)}) l))")
 
-    # Symmetry breaking
-    for i in range(N):
-        for h in range(N):
-            if i < j:
-                lines.append(f"(assert (=> (= {widths[i]} {widths[j]}) (ite (= coord_x{i} coord_x{j}) "
-                                        f"(>= coord_y{j} coord_y{i}) (> coord_x{j} coord_x{i}))))"
-                )
-
     # Symmetry breaking same size 
     for i in range(N):
         for j in range(N):
             if i < j:
                 lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (<= coord_x{i} coord_x{j}) true))")
+    
+
+    # Symmetry breaking that inserts the circuit with the maximum area in (0, 0)
+    areas = [widths[i]*heights[i] for i in range(N)]
+    max_area_ind = areas.index(max(areas))
+    lines.append(f"(assert (= coord_x{max_area_ind} 0))")
+    lines.append(f"(assert (= coord_y{max_area_ind} 0))")
 
     lines.append("(check-sat)")
     lines.append("(get-model)")
@@ -83,54 +82,6 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
     with open(f"{root_path}/src/model.smt2", "w+") as f:
         for line in lines:
             f.write(line + '\n')
-
-'''
-def run_solver(heights, timeout=300):
-    solver = z3.Solver()
-    solver.set(timeout=timeout*1000, auto_config=True)
-    smt_mod = z3.parse_smt2_file(f"{root_path}/src/model.smt2")
-    solver.add(smt_mod)
-
-    l_up = sum(heights)
-    solution = {"l": l_up, "coord_x":[], "coord_y":[]}
-    start_time = time.perf_counter()
-    while True:
-        res = solver.check()
-        # I need to manage the timeout decreasing during the solve
-        check_time = time.perf_counter()
-        new_timeout = int(timeout*1000-(check_time-start_time)*1000)
-        if new_timeout < 0:
-            print("Timeout reached, search stopped.")
-            break
-        solver.set("timeout", new_timeout)
-
-        if res == z3.unsat:
-            print("Unsat therefore search interrupted.")
-            break
-        if res == z3.unknown:
-            if solver.reason_unknown() == "timeout":
-                print("Timeout reached, search stopped.")
-            else:
-                print("Error during the search, unknown status returned.")
-            break
-        last_model = solver.model()
-        
-        l_ind = [str(m) for m in last_model].index('l')
-        l_var = last_model[l_ind]
-        
-        solver.add(l_var() != last_model[l_var()])
-        l, coord_x, coord_y = z3_parse_solution(last_model)
-        if l < solution["l"]:
-            solution = {"l": l, "coord_x": coord_x, "coord_y": coord_y}
-    
-    end_time = time.perf_counter()
-    if solution["l"] != l_up:
-        print(f"The minimum found l is {solution['l']}, in {end_time - start_time} seconds.")
-        return solution["l"], solution["coord_x"], solution["coord_y"]
-    else:
-        print("No solutions found within the time limit")
-        return None, None, None
-'''
 
 
 if __name__ == "__main__":
@@ -140,6 +91,7 @@ if __name__ == "__main__":
     instance_file = params['instance_val']
     timeout = params['timeout']
     rotation = params['rotation']
+    verbose = params['verbose']
 
     plot_file = plot_path.format(model=ModelType.BASE.value, file=instance_file.split(".")[0])
 
@@ -163,16 +115,16 @@ if __name__ == "__main__":
 
         l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
         
-        solution = offline_omt(solver, l_low, sum(heights), timeout)
+        solution = offline_omt(solver, l_low, sum(heights), timeout, verbose)
 
         if len(solution[0].keys()) != 0:
             l, coord_x, coord_y = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y']
             sol_time = solution[1]
-            print(f"l is {l}, found in {sol_time} seconds.")
+            print(f"Minimum found l is {l}, found in {round(sol_time,4)} seconds.")
             plot_cmap(
                 W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
                     plot_file, rotation=None, cmap_name="Set3"
             )
         else:
             print(f"Something goes wrong.")
-            sys.exit(1)            
+            sys.exit(1)         

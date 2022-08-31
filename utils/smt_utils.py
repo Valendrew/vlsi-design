@@ -77,6 +77,8 @@ def check_smt_parameters(data_path):
                     type=lambda x: check_file(p, x, data_path), required=True)
     p.add_argument('-to', '--timeout', dest='timeout', help='The maximum number of seconds after which the solve is interrupted.', 
                     type=int, default=300)
+    p.add_argument('-v', '--verbose', dest='verbose', help='If the function has to print different information about the solve.', 
+                    action='store_true')
 
     args = p.parse_args()
     param = dict(args._get_kwargs())
@@ -84,20 +86,20 @@ def check_smt_parameters(data_path):
 
 
 # It returns the solution found by the solver on the current formula
-def run_solver_once(solver, last_opt):
-
-    solution = {"solution":{"l": last_opt, "coord_x":[], "coord_y":[]}, "l_var": None}
+def run_solver_once(solver, verbose):
+    vprint = print if verbose else lambda *a, **k: None
+    solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[]}, "l_var": None}
     res = solver.check()
 
     if res == z3.unsat:
-        print("Unsat therefore search interrupted.")
+        vprint("Unsat therefore search interrupted.")
         return None
     if res == z3.unknown:
         if solver.reason_unknown() == "timeout":
-            print("Timeout reached, search stopped.")
+            vprint("Timeout reached, search stopped.")
             return None
         else:
-            print("Error during the search, unknown status returned.")
+            vprint("Error during the search, unknown status returned.")
             return None
 
     last_model = solver.model()
@@ -112,7 +114,9 @@ def run_solver_once(solver, last_opt):
 
 
 # Offline OMT implementation for finding the minimum value of l
-def offline_omt(solver, l_low, l_up, timeout):
+def offline_omt(solver, l_low, l_up, timeout, verbose):
+    vprint = print if verbose else lambda *a, **k: None
+
     low, up = l_low, l_up
     opt_sol = {}
 
@@ -126,28 +130,24 @@ def offline_omt(solver, l_low, l_up, timeout):
             check_time = time.perf_counter()
             new_timeout = int(timeout*1000-(check_time-start_time)*1000)
             if new_timeout < 0:
-                print("Timeout reached, search stopped.")
-                return opt_sol
+                vprint("Timeout reached, search stopped.")
+                return opt_sol, timeout
             solver.set("timeout", new_timeout)
 
         curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
-        curr_sol = run_solver_once(solver, curr_l)
+        curr_sol = run_solver_once(solver, verbose)
         if curr_sol != None:
             if curr_sol['solution']['l'] < curr_l:
                 opt_sol = curr_sol['solution']
-                print(f"Found solution with l={opt_sol['l']}, low={low} - up={up}")
+                vprint(f"Found solution with l={opt_sol['l']}, low={low} - up={up}")
             l_var = curr_sol['l_var']
             up = l_guess
             # Add constraints to l
-            print(f"Add constraint l < {up}")
-            if i > 0:
-                solver.pop()
-            solver.push()
+            vprint(f"Add constraint l < {up}.")
             solver.add(l_var() < up)
         else:
-            # TODO: could we put low = l
             low = l_guess + 1
-            print(f"No solution")
+            vprint(f"No solutions found in the last run.")
         i += 1
     end_time = time.perf_counter()
 
