@@ -5,14 +5,14 @@ import z3
 import sys
 sys.path.append("./")
 
-from utils.smt_utils import extract_input_from_txt, z3_parse_solution, get_w_and_h_from_txt, check_smt_parameters
-from utils.smt_utils import offline_omt
+from utils.smt_utils import extract_input_from_txt, get_w_and_h_from_txt, check_smt_parameters, offline_omt, run_solver_once
+from utils.solution_log import save_solution
 from utils.types import SolverSMT, LogicSMT, ModelType
 from utils.plot import plot_cmap
 
 root_path = "./SMT"
-plot_path = join_path(root_path, "out/plots/{model}/{file}")
-statistics_path = join_path(root_path, "out/statistics/{model}/{file}.csv")
+plot_path = join_path(root_path, "out/{model}/plots/{file}")
+statistics_path = join_path(root_path, "out/{model}/statistics/z3_{file}.csv")
 data_path = {
     "dzn": "./vlsi-instances/dzn-instances/{file}",
     "txt": "./vlsi-instances/txt-instances/{file}",
@@ -117,6 +117,9 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
 
     lines.append(f"(assert (and (>= l {l_low}) (<= l {l_up})))")
 
+    # Boundary constraints
+    lines += [f"(assert (and (<= (+ coord_x{i} w_real{i}) {W}) (<= (+ coord_y{i} h_real{i}) l)))" for i in range(N)]
+
     # Non-Overlap constraints, at least one needs to be satisfied
     for i in range(N):
         for j in range(N):
@@ -127,10 +130,9 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
                                          f"(>= (- coord_y{i} h_real{j}) coord_y{j})))"
                 )
 
-    # Boundary constraints
-    lines += [f"(assert (and (<= (+ coord_x{i} w_real{i}) {W}) (<= (+ coord_y{i} h_real{i}) l)))" for i in range(N)]
+    
 
-    # Cumulative constraints 
+    '''# Cumulative constraints 
     for w in widths:
         sum_var = [f"(ite (and (<= coord_y{i} {w}) (< {w} (+ coord_y{i} h_real{i}))) w_real{i} 0)" for i in range(N)]
         lines.append(f"(assert (<= (+ {' '.join(sum_var)}) {W}))")
@@ -152,7 +154,7 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
     areas = [widths[i]*heights[i] for i in range(N)]
     max_area_ind = areas.index(max(areas))
     lines.append(f"(assert (= coord_x{max_area_ind} 0))")
-    lines.append(f"(assert (= coord_y{max_area_ind} 0))")
+    lines.append(f"(assert (= coord_y{max_area_ind} 0))")'''
 
     lines.append("(check-sat)")
     for i in range(N):
@@ -198,7 +200,8 @@ if __name__ == "__main__":
         vprint("Generating the rotation model\n")
         l_up = build_SMTLIB_model_rot(W, N, widths, heights, logic=LogicSMT.LIA.value)
 
-    if solver_name != 'z3':
+    if solver_name == SolverSMT.CVC4.value:
+
         print("Work in progress")
     else:
         solver = z3.Solver()
@@ -208,7 +211,7 @@ if __name__ == "__main__":
 
         l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
         
-        solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose)
+        solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose, run_solver_once)
         if len(solution[0].keys()) != 0:
             l, coord_x, coord_y, rotation = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y'],  solution[0]['rotation']
             sol_time = solution[1]
@@ -217,6 +220,7 @@ if __name__ == "__main__":
                 W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
                     plot_file, rotation=rotation, cmap_name="Set3"
             )
+            save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
         else:
             print(f"Something goes wrong.")
             sys.exit(1)         

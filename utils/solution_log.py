@@ -7,6 +7,7 @@ GENERIC_MSG = "Infeasible solution"
 # TODO append specific error
 ERROR_MSG = "Error during execution"
 
+out_path = "{root}/out/{model}/{file}"
 
 def print_logging(solution: Solution):
     if solution.status == StatusEnum.FEASIBLE:
@@ -34,3 +35,14 @@ def print_logging(solution: Solution):
                     f"{solution.coords['x'][i]} {solution.coords['y'][i]}"
                 )
             )
+
+
+def save_solution(root, model, file_name, data):
+    file_name = file_name.replace("ins", "out")
+    out_file = out_path.format(root=root, model=model, file=file_name)
+
+    W, N, l, widths, heights, cx, cy = data
+    lines = [f"{widths[i]} {heights[i]} {cx[i]} {cy[i]}\n" for i in range(N)]
+    with open(out_file, "w+") as fout:
+        fout.writelines([f"{W} {l}\n", f"{N}\n"])
+        fout.writelines(lines)
