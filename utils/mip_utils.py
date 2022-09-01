@@ -1,5 +1,6 @@
 import argparse
 import pulp
+import mosek
 
 from utils.types import DEFAULT_TIMEOUT, ModelType, SolverMIP
 
@@ -7,8 +8,12 @@ from utils.types import DEFAULT_TIMEOUT, ModelType, SolverMIP
 def parse_mip_argument():
     parser = argparse.ArgumentParser(description="MIP solver for VLSI")
     parser.add_argument("instance")
-    parser.add_argument("-m", "--model", default=ModelType.BASE, choices=[e.value for e in ModelType])
-    parser.add_argument("-s", "--solver", default=SolverMIP.CPLEX, choices=[e.value for e in SolverMIP])
+    parser.add_argument(
+        "-m", "--model", default=ModelType.BASE, choices=[e.value for e in ModelType]
+    )
+    parser.add_argument(
+        "-s", "--solver", default=SolverMIP.CPLEX, choices=[e.value for e in SolverMIP]
+    )
     parser.add_argument("-t", "--timeout", default=DEFAULT_TIMEOUT, type=int)
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     # TODO merge statistics with instance using append or something similiar
@@ -16,6 +21,7 @@ def parse_mip_argument():
 
     args = parser.parse_args()
     return vars(args)
+
 
 def check_mip_solver_exists(solver: SolverMIP):
     if solver == SolverMIP.CPLEX:
@@ -29,5 +35,33 @@ def check_mip_solver_exists(solver: SolverMIP):
         return False
 
 
-def check_admissable_timeout(timeout: int):
+def check_mip_admissable_timeout(timeout: int):
     return timeout >= 0 and timeout <= (DEFAULT_TIMEOUT * 3 + 1)
+
+
+def configure_cplex_solver(timeout: int):
+    solver_verbose = False
+
+    # FIXME remove log for parallel computing
+    options = ["set preprocessing symmetry 5"]
+    # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
+    return pulp.CPLEX_CMD(
+        mip=True,
+        msg=solver_verbose,
+        timeLimit=timeout,
+        options=options,
+        warmStart=True,
+        logPath="./log/cplex.log"
+    )
+
+
+def configure_mosek_solver(timeout: int):
+    solver_verbose = False
+
+    # https://docs.mosek.com/latest/opt-server/param-groups.html
+    options = {
+        # mosek.iparam.num_threads: 8,
+        mosek.dparam.mio_max_time: timeout,
+        mosek.iparam.mio_symmetry_level: 4
+    }
+    return pulp.MOSEK(mip=True, msg=solver_verbose, options=options)

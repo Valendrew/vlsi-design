@@ -2,6 +2,8 @@ from glob import glob
 from os import makedirs
 from os.path import join as join_path, exists
 import logging
+from re import I
+from typing import Iterator, List, Union
 
 from utils.types import InputMode, ModelType, RunType, StatisticMode
 
@@ -40,11 +42,13 @@ def format_model_file(run_type: RunType, model_type: ModelType):
 
 def format_statistic_file(
     run_type: RunType,
-    file: str,
+    test_instances: Union[List[int], Iterator[int]],
     model_type: ModelType,
     stats_ext: StatisticMode = StatisticMode.CSV,
     solver: str = None,
 ):
+    file = f"{min(test_instances)}_{max(test_instances)}"
+    
     statistic_path = join_path(run_type.value, f"out/{model_type.value}/statistics")
 
     # Checking if the directory exists

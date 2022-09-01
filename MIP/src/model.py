@@ -1,19 +1,21 @@
 import logging
 import sys
 from typing import List, Tuple, Union
+
 import pulp
-import mosek
 
 from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
-from utils.manage_statistics import save_statistics
+from utils.manage_statistics import checking_instances, save_statistics
 from utils.mip_utils import (
-    check_admissable_timeout,
+    check_mip_admissable_timeout,
     check_mip_solver_exists,
+    configure_cplex_solver,
+    configure_mosek_solver,
     parse_mip_argument,
 )
 from utils.solution_log import print_logging
 from utils.smt_utils import extract_input_from_txt
-from utils.plot import plot_cmap
+from utils.plot import plot_solution
 from utils.minizinc_solver import compute_solve_time, run_minizinc
 from utils.types import (
     SOLUTION_ADMISSABLE,
@@ -26,7 +28,7 @@ from utils.types import (
     StatusEnum,
 )
 
-from create_model import build_pulp_model
+from create_model import build_pulp_model, build_pulp_rotation_model
 
 run_type: RunType = RunType.MIP
 
@@ -40,38 +42,34 @@ def run_mip_solver(
     data_file = format_data_file(input_name, InputMode.TXT)
     # TODO change to take only data_file
     W, N, widths, heights = extract_input_from_txt(
-        "./vlsi-instances/txt-instances/{file}", input_name + ".txt"
+        data_file.rsplit("/", maxsplit=1)[0] + "/{file}",
+        data_file.rsplit("/", maxsplit=1)[1],
     )
 
     sol.input_name = input_name
     sol.width = W
     sol.n_circuits = N
     sol.circuits = [[widths[i], heights[i]] for i in range(N)]
-    sol.rotation = None if model_type == ModelType.ROTATION else None
 
-    prob: pulp.LpProblem = build_pulp_model(W, N, widths, heights)
+    # Model selection
+    if model_type == ModelType.BASE:
+        prob = build_pulp_model(W, N, widths, heights)
+    elif model_type == ModelType.ROTATION:
+        prob = build_pulp_rotation_model(W, N, widths, heights)
+    else:
+        raise BaseException("Model type not available")
 
     if solver == SolverMIP.CPLEX:
-        solver = pulp.CPLEX_CMD(
-            mip=True,
-            msg=solver_verbose,
-            timeLimit=timeout,
-            options=["set preprocessing symmetry -1"],
-            warmStart=True,
-        )
+        solver = configure_cplex_solver(timeout)
     elif solver == SolverMIP.MOSEK:
-        options = {
-            # mosek.iparam.num_threads: 8,
-            mosek.dparam.mio_max_time: timeout,
-        }
-        solver = pulp.MOSEK(mip=True, msg=solver_verbose, options=options)
+        solver = configure_mosek_solver(timeout)
     else:
         raise BaseException("Solver not available")
 
     try:
         prob.solve(solver)
     except BaseException as err:
-        print(f"Unexpected {err}")
+        logging.error(f"Unexpected {err}")
         sol.status = StatusEnum.ERROR
         return sol
 
@@ -79,19 +77,23 @@ def run_mip_solver(
     sol.solve_time = compute_solve_time(prob.solutionTime)
 
     if SOLUTION_ADMISSABLE(sol.status):
-        sol.height = int(pulp.value(prob.objective))
-
+        sol.height = round(pulp.value(prob.objective))
+        rotation = [False] * N
         coords = {"x": [None] * N, "y": [None] * N}
         for v in prob.variables():
             # print(f"{v.name}: {v.value()}")
-            if "coord_x" in v.name:
-                ind = int(v.name.split("coord_x_")[1])
-                coords["x"][ind] = round(v.varValue)
-            elif "coord_y" in v.name:
-                ind = int(v.name.split("coord_y_")[1])
-                coords["y"][ind] = round(v.varValue)
+            if str(v.name).startswith("coord_x"):
+                coords["x"][int(v.name[8:])] = round(v.varValue)
+            elif str(v.name).startswith("coord_y"):
+                coords["y"][int(v.name[8:])] = round(v.varValue)
+            elif str(v.name).startswith("rot"):
+                rotation[int(v.name[4:])] = bool(round(v.varValue))
 
         sol.coords = coords
+
+        # FIXME use rotation from solver
+        sol.rotation = rotation if len(rotation) > 0 else None
+
     return sol
 
 
@@ -106,14 +108,12 @@ def compute_solution(
     plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
-        input_mode = InputMode.DZN
         mz_solver = SolverMinizinc.CHUFFED
         free_search = True
 
-        sol, _ = run_minizinc(
+        sol = run_minizinc(
             input_name,
             run_type,
-            input_mode,
             model_type,
             mz_solver,
             timeout,
@@ -122,19 +122,9 @@ def compute_solution(
     elif solver == SolverMIP.MOSEK or solver == SolverMIP.CPLEX:
         sol = run_mip_solver(input_name, model_type, solver, timeout)
 
-    if verbose:
-        print_logging(sol)
-    if SOLUTION_ADMISSABLE(sol.status):
-        plot_cmap(
-            sol.width,
-            sol.height,
-            sol.n_circuits,
-            sol.circuits,
-            sol.coords,
-            plot_file,
-            sol.rotation,
-            "turbo_r",
-        )
+    print_logging(sol, verbose)
+    plot_solution(sol, plot_file)
+
     return sol
 
 
@@ -145,19 +135,9 @@ def compute_tests(
     timeout: int,
     verbose: bool,
 ):
-    # If instances must be treated as a range
-    if isinstance(test_instances, tuple):
-        test_iterator = range(test_instances[0], test_instances[1] + 1)
-    # If explicits instances are passed as a list
-    elif isinstance(test_instances, list):
-        test_iterator = test_instances
-    else:
-        raise TypeError("Statistic instances must be of type list or tuple")
-
-    output_name = f"{min(test_instances)}_{max(test_instances)}"
-
+    test_iterator = checking_instances(test_instances)
     statistics_path = format_statistic_file(
-        run_type, output_name, model_type, solver=solver.value
+        run_type, test_instances, model_type, solver=solver.value
     )
 
     for i in test_iterator:
@@ -183,7 +163,7 @@ if __name__ == "__main__":
         sys.exit(2)
 
     # Check if the timeout is out of range
-    if not check_admissable_timeout(timeout):
+    if not check_mip_admissable_timeout(timeout):
         logging.error("Timeout out of range")
         sys.exit(2)
 
