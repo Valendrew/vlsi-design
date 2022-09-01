@@ -112,12 +112,24 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
     )
 
     # Rotation variables
-    rotation = pulp.LpVariable.dicts("rot", indices=set_N, lowBound=0, upBound=1, cat=pulp.LpBinary)
+    rotation = pulp.LpVariable.dicts(
+        "rot", indices=set_N, lowBound=0, upBound=1, cat=pulp.LpBinary
+    )
+
+    for i in set_N:
+        if widths[i] == heights[i] or heights[i] > W:
+            rotation[i] = 0
 
     # Boundary constraints
     for i in set_N:
-        prob += coord_x[i] + widths[i] * (1 - rotation[i]) + heights[i] * rotation[i] <= W, f"X-axis of {i}-th coordinate bound"
-        prob += coord_y[i] + heights[i] * (1 - rotation[i]) + widths[i] * rotation[i] <= l, f"Y-axis of {i}-th coordinate bound"
+        prob += (
+            coord_x[i] + widths[i] * (1 - rotation[i]) + heights[i] * rotation[i] <= W,
+            f"X-axis of {i}-th coordinate bound",
+        )
+        prob += (
+            coord_y[i] + heights[i] * (1 - rotation[i]) + widths[i] * rotation[i] <= l,
+            f"Y-axis of {i}-th coordinate bound",
+        )
 
     # Booleans for OR condition
     set_C = range(2)
@@ -133,36 +145,44 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
     for i in set_N:
         for j in set_N:
             if i < j:
-                prob += coord_x[i] + widths[i] * (1 - rotation[i]) + heights[i] * rotation[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
+                """prob += coord_x[i] + widths[i] * (1 - rotation[i]) + heights[i] * rotation[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
                 prob += coord_x[j] + widths[j] * (1 - rotation[j]) + heights[j] * rotation[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
                 prob += (
                     coord_y[i] + heights[i] * (1 - rotation[i]) + widths[i] * rotation[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
                 )
                 prob += (
                     coord_y[j] + heights[j] * (1 - rotation[j]) + widths[j] * rotation[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
-                )
+                )"""
 
-                """ prob += (
-                    coord_x[i] + widths[i]
+                prob += (
+                    coord_x[i]
+                    + widths[i] * (1 - rotation[i])
+                    + heights[i] * rotation[i]
                     <= coord_x[j]
                     + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
                 )
                 prob += (
-                    coord_x[j] + widths[j]
+                    coord_x[j]
+                    + widths[j] * (1 - rotation[j])
+                    + heights[j] * rotation[j]
                     <= coord_x[i]
                     + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
                 )
 
                 prob += (
-                    coord_y[i] + heights[i]
+                    coord_y[i]
+                    + heights[i] * (1 - rotation[i])
+                    + widths[i] * rotation[i]
                     <= coord_y[j]
                     + (delta[i][j][0] + delta[j][i][0] + delta[j][i][1]) * l_up
                 )
                 prob += (
-                    coord_y[j] + heights[j]
+                    coord_y[j]
+                    + heights[j] * (1 - rotation[j])
+                    + widths[j] * rotation[j]
                     <= coord_y[i]
                     + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                ) """
+                )
 
                 prob += (
                     delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]

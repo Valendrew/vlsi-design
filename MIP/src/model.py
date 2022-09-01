@@ -1,7 +1,6 @@
 import logging
 import sys
 from typing import List, Tuple, Union
-from unicodedata import name
 
 import pulp
 
@@ -79,7 +78,7 @@ def run_mip_solver(
 
     if SOLUTION_ADMISSABLE(sol.status):
         sol.height = round(pulp.value(prob.objective))
-        rotation = [None] * N
+        rotation = [False] * N
         coords = {"x": [None] * N, "y": [None] * N}
         for v in prob.variables():
             # print(f"{v.name}: {v.value()}")
@@ -88,7 +87,7 @@ def run_mip_solver(
             elif str(v.name).startswith("coord_y"):
                 coords["y"][int(v.name[8:])] = round(v.varValue)
             elif str(v.name).startswith("rot"):
-                rotation[int(v.name[4:])] = round(v.varValue)
+                rotation[int(v.name[4:])] = bool(round(v.varValue))
 
         sol.coords = coords
 

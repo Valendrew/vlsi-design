@@ -1,8 +1,15 @@
 from typing import Tuple
-from minizinc import Instance, Model, Solver, Result
+from minizinc import Instance, Model, Solver, Result, Status
 from utils.manage_paths import format_data_file, format_model_file
-from utils.solution_log import Solution, print_logging
-from utils.types import InputMode, ModelType, RunType, SolverMinizinc, StatusEnum
+from utils.solution_log import Solution
+from utils.types import (
+    SOLUTION_ADMISSABLE,
+    InputMode,
+    ModelType,
+    RunType,
+    SolverMinizinc,
+    StatusEnum,
+)
 from datetime import timedelta
 
 
@@ -16,13 +23,8 @@ def compute_solve_time(ex_time: float) -> str:
 
 
 def get_minizinc_solution(
-    result: Result, instance: Instance, input_name: str
+    result: Result, instance: Instance, sol: Solution
 ) -> Solution:
-    sol = Solution()
-
-    sol.status = StatusEnum.OPTIMAL
-    sol.input_name = input_name
-
     # solutions
     sol.coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
     sol.height = result.solution.l
@@ -64,12 +66,25 @@ def run_minizinc(
     result = instance.solve(timeout=td_timeout, free_search=free_search)
 
     # After the instance has been solved
-    if result.status.OPTIMAL_SOLUTION:
-        # no solution found
-        if not hasattr(result, "solution") or (result.solution is None):
-            # TODO handle statistics when -1 is returned
-            sol = Solution
-            sol.status = StatusEnum.INFEASIBLE
-            return sol
+    sol = Solution()
+    sol.input_name = input_name
 
-        return get_minizinc_solution(result, instance, input_name)
+    if result.status == Status.ERROR:
+        sol.status = StatusEnum.ERROR
+    elif result.status == Status.UNKNOWN:
+        sol.status = StatusEnum.NO_SOLUTION_FOUND
+    elif result.status == Status.UNBOUNDED:
+        sol.status = StatusEnum.UNBOUNDED
+    elif result.status == Status.UNSATISFIABLE:
+        sol.status = StatusEnum.INFEASIBLE
+    elif result.status == Status.SATISFIED:
+        sol.status = StatusEnum.FEASIBLE
+    elif result.status == Status.OPTIMAL_SOLUTION:
+        sol.status = StatusEnum.OPTIMAL
+    else:
+        raise BaseException("Status not handled")
+
+    if SOLUTION_ADMISSABLE(sol.status):
+        return get_minizinc_solution(result, instance, sol)
+    else:
+        return sol

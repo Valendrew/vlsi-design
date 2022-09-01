@@ -42,12 +42,16 @@ def check_mip_admissable_timeout(timeout: int):
 def configure_cplex_solver(timeout: int):
     solver_verbose = False
 
+    # FIXME remove log for parallel computing
+    options = ["set preprocessing symmetry 5"]
+    # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
     return pulp.CPLEX_CMD(
         mip=True,
         msg=solver_verbose,
         timeLimit=timeout,
-        options=["set preprocessing symmetry 5"],
+        options=options,
         warmStart=True,
+        logPath="./log/cplex.log"
     )
 
 
@@ -58,7 +62,6 @@ def configure_mosek_solver(timeout: int):
     options = {
         # mosek.iparam.num_threads: 8,
         mosek.dparam.mio_max_time: timeout,
-        mosek.iparam.mio_symmetry_level: 4,
-        mosek.iparam.optimizer: "MSK_OPTIMIZER_PRIMAL_SIMPLEX",
+        mosek.iparam.mio_symmetry_level: 4
     }
     return pulp.MOSEK(mip=True, msg=solver_verbose, options=options)
