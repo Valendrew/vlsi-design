@@ -4,7 +4,7 @@ from typing import List, Tuple, Union
 import pulp
 import mosek
 
-from utils.formatting import format_data_file, format_plot_file, format_statistic_file
+from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
 from utils.manage_statistics import save_statistics
 from utils.mip_utils import (
     check_admissable_timeout,
@@ -103,9 +103,7 @@ def compute_solution(
     verbose: bool,
 ):
     # plot path
-    plot_file = format_plot_file(
-        run_type, input_name, model_type, solver=solver.name.lower()
-    )
+    plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
         input_mode = InputMode.DZN
@@ -155,10 +153,12 @@ def compute_tests(
         test_iterator = test_instances
     else:
         raise TypeError("Statistic instances must be of type list or tuple")
-    
-    output_name = f"{solver.value}_{min(test_instances)}_{max(test_instances)}"
 
-    statistics_path = format_statistic_file(run_type, output_name, model_type)
+    output_name = f"{min(test_instances)}_{max(test_instances)}"
+
+    statistics_path = format_statistic_file(
+        run_type, output_name, model_type, solver=solver.value
+    )
 
     for i in test_iterator:
         sol = compute_solution(f"ins-{i}", model_type, solver, timeout, verbose)

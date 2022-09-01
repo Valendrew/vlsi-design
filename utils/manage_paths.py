@@ -25,10 +25,10 @@ def format_plot_file(
 
     if solver is not None:
         plot_path = join_path(
-            run_type.value, f"out/plots/{model_type.value}/{solver}/{file}"
+            run_type.value, f"out/{model_type.value}/{solver}/plots/{file}"
         )
     else:
-        plot_path = join_path(run_type.value, f"out/plots/{model_type.value}/{file}")
+        plot_path = join_path(run_type.value, f"out/{model_type.value}/plots/{file}")
 
     makedirs(plot_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
     return plot_path
@@ -45,18 +45,17 @@ def format_statistic_file(
     stats_ext: StatisticMode = StatisticMode.CSV,
     solver: str = None,
 ):
-    if solver is not None:
-        statistic_path = join_path(
-            run_type.value, f"out/statistics/{model_type.value}/{solver}"
-        )
-    else:
-        statistic_path = join_path(run_type.value, f"out/statistics/{model_type.value}")
+    statistic_path = join_path(run_type.value, f"out/{model_type.value}/statistics")
 
     # Checking if the directory exists
     makedirs(statistic_path, exist_ok=True)
 
     """ Checking if the basename file already exists, 
     then append the number of occurences in order to have an unique name """
-    statistic_path = join_path(statistic_path, file + "-{suffix}")
+    if solver is not None:
+        statistic_path = join_path(statistic_path, f"{solver}_{file}" + "-{suffix}")
+    else:
+        statistic_path = join_path(statistic_path, f"{file}" + "-{suffix}")
+
     same_file_len = len(glob(statistic_path.format(suffix="*")))
     return statistic_path.format(suffix=f"{same_file_len}.{stats_ext.value}")
