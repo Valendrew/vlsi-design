@@ -26,14 +26,16 @@ def save_statistics(statistic_path: str, solution: Solution):
     sol_vars = vars(solution).copy()
     sol_vars["status"] = StatusEnum(sol_vars["status"]).name
     values = [
-        [sol_vars[c.split("_")[0]][c.split("_")[1]]]
+        sol_vars[c.split("_")[0]][c.split("_")[1]]
         if c in ["coords_x", "coords_y"]
         else sol_vars[c]
         for c in columns
     ]
+    values = [[v] if isinstance(v, list) else v for v in values]
 
     df = pd.concat([df, pd.DataFrame(dict(zip(columns, values)))], ignore_index=True)
     df.to_csv(statistic_path, index=False)
+
 
 def checking_instances(instances_list) -> Union[List[int], Iterator[int]]:
     # If instances must be treated as a range
