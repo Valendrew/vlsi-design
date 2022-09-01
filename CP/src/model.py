@@ -13,7 +13,7 @@ from utils.manage_paths import format_plot_file, format_statistic_file
 from utils.solution_log import print_logging
 
 
-from utils.plot import plot, plot_cmap
+from utils.plot import plot, plot_cmap, plot_solution
 from utils.manage_statistics import checking_instances, save_statistics
 from utils.types import (
     SOLUTION_ADMISSABLE,
@@ -46,19 +46,8 @@ def compute_solution(
         free_search,
     )
 
-    if verbose:
-        print_logging(sol)
-
-    plot_cmap(
-        sol.width,
-        sol.height,
-        sol.n_circuits,
-        sol.circuits,
-        sol.coords,
-        plot_file,
-        sol.rotation,
-        "turbo_r",
-    )
+    print_logging(sol, verbose)
+    plot_solution(sol, plot_file)
 
     return sol
 
@@ -109,7 +98,7 @@ if __name__ == "__main__":
 
     if save_stats:
         # TODO pass instances through cmd line
-        test_instances = (1, 5)
+        test_instances = (6, 10)
         compute_tests(test_instances, model_type, solver, free_search, timeout, verbose)
     else:
         compute_solution(input_name, model_type, solver, free_search, timeout, verbose)
