@@ -100,8 +100,7 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
 
     # Coordinate variables
     set_N = range(N)
-    # TODO change in min(widths+heights)
-    c_wh_up = min(min(widths), min(heights))
+    c_wh_up = min(widths+heights)
     cx_up = int(W - c_wh_up)
     cy_up = int(l_up - c_wh_up)
     coord_x = pulp.LpVariable.dicts(
