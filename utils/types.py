@@ -68,9 +68,11 @@ class Solution:
     status: StatusEnum
     input_name: str
     width: int
-    height: int
-    solve_time: str
     n_circuits: int
     circuits: List[List[int]]
-    rotation: List[bool]
+    height: int
+    solve_time: str
+    rotation: List[bool] = None
     coords: Coords
+
+    

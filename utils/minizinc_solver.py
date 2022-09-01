@@ -18,7 +18,7 @@ def compute_solve_time(ex_time: float) -> str:
 def get_minizinc_solution(
     result: Result, instance: Instance, input_name: str
 ) -> Solution:
-    sol = Solution
+    sol = Solution()
 
     sol.status = StatusEnum.OPTIMAL
     sol.input_name = input_name
