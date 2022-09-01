@@ -109,7 +109,7 @@ def compute_solution(
         mz_solver = SolverMinizinc.CHUFFED
         free_search = True
 
-        sol, _ = run_minizinc(
+        sol = run_minizinc(
             input_name,
             run_type,
             model_type,
