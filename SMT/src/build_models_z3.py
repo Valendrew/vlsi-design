@@ -77,7 +77,10 @@ def build_SMTLIB_model(W, N, widths, heights, logic: LogicSMT="LIA"):
     lines.append(f"(assert (= coord_y{max_area_ind} 0))")
 
     lines.append("(check-sat)")
-    lines.append("(get-model)")
+    for i in range(N):
+        lines.append(f"(get-value (coord_x{i}))")
+        lines.append(f"(get-value (coord_y{i}))")
+    lines.append("(get-value (l))")
     
     with open(f"{root_path}/src/model.smt2", "w+") as f:
         for line in lines:
@@ -135,13 +138,12 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic: LogicSMT="LIA"):
     for h in heights:
         sum_var = [f"(ite (and (<= coord_x{i} {h}) (< {h} (+ coord_x{i} w_real{i}))) h_real{i} 0)" for i in range(N)]
         lines.append(f"(assert (<= (+ {' '.join(sum_var)}) l))")
-
+    
     # Symmetry breaking same size 
     for i in range(N):
         for j in range(N):
             if i < j:
                 lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (< coord_x{i} coord_x{j}) true))")
-    
     # Symmetry breakings for rotation
     lines += [f"(assert (= rot{i} false))" for i in range(N) if widths[i] == heights[i]]
     lines += [f"(assert (= rot{i} false))" for i in range(N) if heights[i] > W]
@@ -180,8 +182,10 @@ if __name__ == "__main__":
 
     if rotation:
         model_type = ModelType.ROTATION.value
+        model_filename = "model_rot.smt2"
     else:
         model_type = ModelType.BASE.value
+        model_filename = "model.smt2"
 
     plot_file = plot_path.format(model=model_type, file=instance_file.split(".")[0])
 
@@ -199,10 +203,6 @@ if __name__ == "__main__":
     else:
         solver = z3.Solver()
         solver.set(timeout=timeout*1000)
-        if rotation:
-            model_filename = "model_rot.smt2"
-        else:
-            model_filename = "model.smt2"
         formula = z3.parse_smt2_file(f"{root_path}/src/{model_filename}")
         solver.add(formula)
 
