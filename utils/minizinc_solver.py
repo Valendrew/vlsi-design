@@ -44,13 +44,12 @@ def get_minizinc_solution(
 def run_minizinc(
     input_name: str,
     run_type: RunType,
-    input_mode: InputMode = InputMode.DZN,
     model_type: ModelType = ModelType.BASE,
     solver: SolverMinizinc = SolverMinizinc.GECODE,
     timeout: int = None,
     free_search=False,
-) -> Tuple[Solution, Result]:
-    data_file = format_data_file(input_name, input_mode)
+) -> Solution:
+    data_file = format_data_file(input_name, InputMode.DZN)
     model_file = format_model_file(run_type, model_type)
 
     model = Model(model_file)
@@ -71,6 +70,6 @@ def run_minizinc(
             # TODO handle statistics when -1 is returned
             sol = Solution
             sol.status = StatusEnum.INFEASIBLE
-            return sol, result
+            return sol
 
-        return get_minizinc_solution(result, instance, input_name), result
+        return get_minizinc_solution(result, instance, input_name)

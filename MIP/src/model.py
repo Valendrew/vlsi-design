@@ -5,15 +5,15 @@ import pulp
 import mosek
 
 from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
-from utils.manage_statistics import save_statistics
+from utils.manage_statistics import checking_instances, save_statistics
 from utils.mip_utils import (
-    check_admissable_timeout,
+    check_mip_admissable_timeout,
     check_mip_solver_exists,
     parse_mip_argument,
 )
 from utils.solution_log import print_logging
 from utils.smt_utils import extract_input_from_txt
-from utils.plot import plot_cmap
+from utils.plot import plot_cmap, plot_solution
 from utils.minizinc_solver import compute_solve_time, run_minizinc
 from utils.types import (
     SOLUTION_ADMISSABLE,
@@ -106,14 +106,12 @@ def compute_solution(
     plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
-        input_mode = InputMode.DZN
         mz_solver = SolverMinizinc.CHUFFED
         free_search = True
 
         sol, _ = run_minizinc(
             input_name,
             run_type,
-            input_mode,
             model_type,
             mz_solver,
             timeout,
@@ -122,19 +120,9 @@ def compute_solution(
     elif solver == SolverMIP.MOSEK or solver == SolverMIP.CPLEX:
         sol = run_mip_solver(input_name, model_type, solver, timeout)
 
-    if verbose:
-        print_logging(sol)
-    if SOLUTION_ADMISSABLE(sol.status):
-        plot_cmap(
-            sol.width,
-            sol.height,
-            sol.n_circuits,
-            sol.circuits,
-            sol.coords,
-            plot_file,
-            sol.rotation,
-            "turbo_r",
-        )
+    print_logging(sol, verbose)
+    plot_solution(sol, plot_file)
+    
     return sol
 
 
@@ -145,19 +133,9 @@ def compute_tests(
     timeout: int,
     verbose: bool,
 ):
-    # If instances must be treated as a range
-    if isinstance(test_instances, tuple):
-        test_iterator = range(test_instances[0], test_instances[1] + 1)
-    # If explicits instances are passed as a list
-    elif isinstance(test_instances, list):
-        test_iterator = test_instances
-    else:
-        raise TypeError("Statistic instances must be of type list or tuple")
-
-    output_name = f"{min(test_instances)}_{max(test_instances)}"
-
+    test_iterator = checking_instances(test_instances)
     statistics_path = format_statistic_file(
-        run_type, output_name, model_type, solver=solver.value
+        run_type, test_instances, model_type, solver=solver.value
     )
 
     for i in test_iterator:
@@ -183,7 +161,7 @@ if __name__ == "__main__":
         sys.exit(2)
 
     # Check if the timeout is out of range
-    if not check_admissable_timeout(timeout):
+    if not check_mip_admissable_timeout(timeout):
         logging.error("Timeout out of range")
         sys.exit(2)
 
