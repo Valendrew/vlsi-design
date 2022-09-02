@@ -49,17 +49,16 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
     for i in set_N:
         for j in set_N:
             if i < j:
-                if widths[i] + widths[j] <= W:
-                    prob += (
-                        coord_x[i] + widths[i] <= coord_x[j] + (delta[i][j][0]) * W
-                    )
-                    prob += (
-                        coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
-                    )
-                else:
+                if widths[i] + widths[j] > W:
                     prob += delta[i][j][0] == 1
                     prob += delta[j][i][0] == 1
 
+                prob += (
+                    coord_x[i] + widths[i] <= coord_x[j] + (delta[i][j][0]) * W
+                )
+                prob += (
+                    coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
+                )
                 prob += (
                     coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][1]) * l_up
                 )
@@ -71,13 +70,6 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     <= 3
                 )
 
-                """  if  i == max_circuit and widths[i] + widths[j] > W:
-                    prob += delta[i][j][1] == 1
-                    prob += delta[j][i][1] == 0
-                elif j == max_circuit and widths[i] + widths[j] > W:
-                    prob += delta[j][i][1] == 1
-                    prob += delta[i][j][1] == 0 """
-                
                 """ if widths[i] + widths[j] <= W:
                     prob += (
                         coord_x[i] + widths[i]
