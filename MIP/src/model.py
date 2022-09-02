@@ -2,6 +2,8 @@ import logging
 import sys
 from typing import List, Tuple, Union
 
+sys.path.append("./")
+
 import pulp
 
 from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
