@@ -11,6 +11,7 @@ from utils.mip_utils import (
     check_mip_solver_exists,
     configure_cplex_solver,
     configure_mosek_solver,
+    create_configuration_dict,
     parse_mip_argument,
 )
 from utils.solution_log import print_logging
@@ -34,7 +35,11 @@ run_type: RunType = RunType.MIP
 
 
 def run_mip_solver(
-    input_name: str, model_type: ModelType, solver: SolverMIP, timeout: int
+    input_name: str,
+    model_type: ModelType,
+    solver: SolverMIP,
+    timeout: int,
+    configuration=None,
 ):
     solver_verbose = False
 
@@ -60,7 +65,7 @@ def run_mip_solver(
         raise BaseException("Model type not available")
 
     if solver == SolverMIP.CPLEX:
-        solver = configure_cplex_solver(timeout)
+        solver = configure_cplex_solver(timeout, configuration)
     elif solver == SolverMIP.MOSEK:
         solver = configure_mosek_solver(timeout)
     else:
@@ -92,7 +97,7 @@ def run_mip_solver(
         sol.coords = coords
 
         # FIXME use rotation from solver
-        sol.rotation = rotation if len(rotation) > 0 else None
+        sol.rotation = rotation if model_type == ModelType.ROTATION else None
 
     return sol
 
@@ -103,6 +108,7 @@ def compute_solution(
     solver: SolverMIP,
     timeout: int,
     verbose: bool,
+    configuration=None,
 ):
     # plot path
     plot_file = format_plot_file(run_type, input_name, model_type)
@@ -120,7 +126,7 @@ def compute_solution(
             free_search,
         )
     elif solver == SolverMIP.MOSEK or solver == SolverMIP.CPLEX:
-        sol = run_mip_solver(input_name, model_type, solver, timeout)
+        sol = run_mip_solver(input_name, model_type, solver, timeout, configuration)
 
     print_logging(sol, verbose)
     plot_solution(sol, plot_file)
@@ -134,17 +140,27 @@ def compute_tests(
     solver: SolverMIP,
     timeout: int,
     verbose: bool,
+    configuration=None,
 ):
     test_iterator = checking_instances(test_instances)
     statistics_path = format_statistic_file(
         run_type, test_instances, model_type, solver=solver.value
     )
 
-    for i in test_iterator:
-        sol = compute_solution(f"ins-{i}", model_type, solver, timeout, verbose)
-        save_statistics(statistics_path, sol)
+    for i in range(len(test_iterator)):
+        sol = compute_solution(
+            f"ins-{test_iterator[i]}",
+            model_type,
+            solver,
+            timeout,
+            verbose,
+            configuration[i] if configuration else None,
+        )
+        save_statistics(
+            statistics_path, sol, configuration[i] if configuration else None
+        )
         print(
-            f"\n- Computed instance {i}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
         )
 
 
@@ -169,7 +185,20 @@ if __name__ == "__main__":
 
     if save_stats:
         # TODO pass instances through cmd line
-        test_instances = (1, 5)
-        compute_tests(test_instances, model_type, solver, timeout, verbose)
+        test_instances = (1, 40)
+        configuration = None
+
+        # FIXME instances configured differently for testing purpose
+        # configuration = create_configuration_dict()
+        # test_instances = [int(input_name[4:])] * len(configuration)
+
+        compute_tests(
+            test_instances,
+            model_type,
+            solver,
+            timeout,
+            verbose,
+            configuration=configuration,
+        )
     else:
         compute_solution(input_name, model_type, solver, timeout, verbose)

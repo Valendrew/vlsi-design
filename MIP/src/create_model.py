@@ -44,26 +44,50 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
     for i in set_N:
         for j in set_N:
             if i < j:
-                """prob += coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
-                prob += coord_x[j] + widths[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
+                """ if widths[i] + widths[j] <= W:
+                    prob += (
+                        coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
+                    )
+                    prob += (
+                        coord_x[j] + widths[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
+                    )
+                else:
+                    prob += delta[i][j][0] == 0
+                    prob += delta[j][i][0] == 0
+
                 prob += (
                     coord_y[i] + heights[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
                 )
                 prob += (
                     coord_y[j] + heights[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
-                )"""
-
-                prob += (
-                    coord_x[i] + widths[i]
-                    <= coord_x[j]
-                    + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
                 )
                 prob += (
-                    coord_x[j] + widths[j]
-                    <= coord_x[i]
-                    + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
-                )
+                    delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
+                    == 1
+                ) """
 
+                if widths[i] + widths[j] <= W:
+                    prob += (
+                        coord_x[i] + widths[i]
+                        <= coord_x[j]
+                        + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
+                    )
+                    prob += (
+                        coord_x[j] + widths[j]
+                        <= coord_x[i]
+                        + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
+                    )
+                else:
+                    prob += delta[i][j][0] == 0
+                    prob += delta[j][i][0] == 0
+
+                prob += (
+                        delta[i][j][0]
+                        + delta[j][i][0]
+                        + delta[i][j][1]
+                        + delta[j][i][1]
+                        == 1
+                    )
                 prob += (
                     coord_y[i] + heights[i]
                     <= coord_y[j]
@@ -73,11 +97,6 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     coord_y[j] + heights[j]
                     <= coord_y[i]
                     + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                )
-
-                prob += (
-                    delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
-                    == 1
                 )
 
     max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
@@ -100,7 +119,7 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
 
     # Coordinate variables
     set_N = range(N)
-    c_wh_up = min(widths+heights)
+    c_wh_up = min(widths + heights)
     cx_up = int(W - c_wh_up)
     cy_up = int(l_up - c_wh_up)
     coord_x = pulp.LpVariable.dicts(

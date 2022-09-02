@@ -1,4 +1,6 @@
 import argparse
+import itertools
+from typing import List
 import pulp
 import mosek
 
@@ -39,19 +41,30 @@ def check_mip_admissable_timeout(timeout: int):
     return timeout >= 0 and timeout <= (DEFAULT_TIMEOUT * 3 + 1)
 
 
-def configure_cplex_solver(timeout: int):
+def configure_cplex_solver(timeout: int, configuration: List[str] = None):
     solver_verbose = False
 
     # FIXME remove log for parallel computing
-    options = ["set preprocessing symmetry 5"]
-    # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
+    # https://www.ibm.com/docs/en/icos/22.1.0?topic=cplex-list-parameters
+    if configuration is not None:
+        # default to True
+        warmStart = configuration[0] if isinstance(configuration[0], bool) else False
+        options = (
+            list(configuration[1:])
+            if isinstance(configuration[0], bool) and len(configuration) > 1
+            else list(configuration[0:])
+        )
+        print(f"warmStart: {warmStart} - {options}")
+    else:
+        warmStart = False
+        options = ["set preprocessing symmetry 5"]
+        # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
     return pulp.CPLEX_CMD(
         mip=True,
         msg=solver_verbose,
         timeLimit=timeout,
         options=options,
-        warmStart=True,
-        logPath="./log/cplex.log"
+        warmStart=warmStart,
     )
 
 
@@ -62,6 +75,22 @@ def configure_mosek_solver(timeout: int):
     options = {
         # mosek.iparam.num_threads: 8,
         mosek.dparam.mio_max_time: timeout,
-        mosek.iparam.mio_symmetry_level: 4
+        mosek.iparam.mio_symmetry_level: 4,
     }
     return pulp.MOSEK(mip=True, msg=solver_verbose, options=options)
+
+
+def create_configuration_dict():
+    repeated_tests = 1
+    supported_conf = [
+        [False],
+        ["set preprocessing symmetry " + str(i) for i in [2, 5]]
+    ]
+
+    basic_conf = list(itertools.product(*supported_conf))
+    set_conf = list(
+        itertools.chain.from_iterable(
+            itertools.repeat(x, repeated_tests) for x in basic_conf
+        )
+    )
+    return set_conf

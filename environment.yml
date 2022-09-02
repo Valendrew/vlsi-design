@@ -12,6 +12,7 @@ dependencies:
   - numpy
   - matplotlib
   - pip:
+    - pysmt
     - black
     - minizinc[dzn]
     - z3-solver

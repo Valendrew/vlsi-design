@@ -74,5 +74,6 @@ class Solution:
     solve_time: str
     rotation: List[bool] = None
     coords: Coords
+    configuration: List[str] = None
 
     
