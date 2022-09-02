@@ -25,12 +25,6 @@ class SolverMIP(Enum):
     MOSEK: str = "mosek"
     MINIZINC: str = "minizinc"
 
-
-class LogicSMT(Enum):
-    LIA: str = "LIA"
-    QF_IDL: str = "QF_IDL"
-
-
 class SolverSMT(Enum):
     Z3: str = "z3"
     CVC4: str = "cvc4"

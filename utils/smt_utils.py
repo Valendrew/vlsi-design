@@ -1,13 +1,23 @@
 import argparse
-import time
+import time, math, warnings
 from os.path import exists, join, splitext
 
-from utils.types import ModelType
+from utils.types import ModelType, SolverSMT
+from utils.plot import plot_cmap
+from utils.solution_log import save_solution
 
-import z3
-import numpy as np
+from pysmt.shortcuts import LT, Int, Solver
+from pysmt.exceptions import SolverReturnedUnknownResultError
+from pysmt.smtlib.parser import SmtLib20Parser
 
 txt_instances = "./vlsi-instances/txt-instances"
+root_path = './SMT'
+data_path = {
+    "dzn": "./vlsi-instances/dzn-instances/{file}",
+    "txt": "./vlsi-instances/txt-instances/{file}",
+}
+plot_path = join(root_path, "out/{model}/plots/{file}")
+
 
 def extract_input_from_txt(data_path, file_instance):
     data_file = data_path.format(file=file_instance)
@@ -24,12 +34,12 @@ def extract_input_from_txt(data_path, file_instance):
 
 
 # Parse the solution returned by the z3 solver
-def z3_parse_solution(data, model_type):
+def parse_solution(data, model_type):
     # Sort the array considering the number of the variables in order to pair x and y
     sort_key = lambda x: int(x[0][7:])
     sort_key_rot = lambda x: int(x[0][3:])
 
-    pairs = dict([(str(m), str(data[m()])) for m in data])
+    pairs = dict([(str(m[0]), str(m[1])) for m in data])
     coord_x = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_x")], key=sort_key)
     coord_y = sorted([(n, v) for n, v in pairs.items() if n.startswith("coord_y")], key=sort_key)
     rotation = sorted([(n, v) for n, v in pairs.items() if n.startswith("rot")], key=sort_key_rot) if model_type == ModelType.ROTATION.value else None
@@ -72,18 +82,20 @@ def check_file(parser, path, data_path):
 # Check the parameters given to the script
 def check_smt_parameters(data_path):
     p = argparse.ArgumentParser()
-    p.add_argument('-sol', '--solver', dest='solver_name', help='The name of the solver you want to use [z3, cvc4, mathsat].',
-                    type=str, required=True)
+    mode = p.add_mutually_exclusive_group(required=True)
+
+    p.add_argument('-sol', '--solver', dest='solver_name', help='The name of the solver you want to use [z3, cvc4].',
+                    type=str, required=True, choices=[SolverSMT.Z3.value, SolverSMT.CVC4.value])
     p.add_argument('-rot', '--rotation', dest='rotation', help='True if you want to use the model that considers rotation',
                     action='store_true')
-    p.add_argument('-log', '--logic', dest='logic', help='The logic you want to use during the solve.', required=False, 
-                    default="LIA")
-    p.add_argument('-ins', '--instance-file', dest='instance_val', help='The file of the instance you want to solve.', 
-                    type=lambda x: check_file(p, x, data_path), required=True)
+    mode.add_argument('-ins', '--instance-file', dest='instance_val', help='The file of the instance you want to solve.', 
+                    type=lambda x: check_file(p, x, data_path))
     p.add_argument('-to', '--timeout', dest='timeout', help='The maximum number of seconds after which the solve is interrupted.', 
                     type=int, default=300)
     p.add_argument('-v', '--verbose', dest='verbose', help='If the function has to print different information about the solve.', 
                     action='store_true')
+    mode.add_argument('-test', '--test-smt', dest='test', help='Specify the interval of instances to run the solver on.', 
+                    nargs=2, type=int)
 
     args = p.parse_args()
     param = dict(args._get_kwargs())
@@ -94,28 +106,19 @@ def check_smt_parameters(data_path):
 def run_solver_once(solver, model_type, verbose):
     vprint = print if verbose else lambda *a, **k: None
 
-    if model_type == ModelType.BASE.value:
-        solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[]}, "l_var": None}
-    else:
-        solution = {"solution":{"l": 0, "coord_x":[], "coord_y":[], "rotation": []}, "l_var": None}
+    solution = {"solution":{}, "l_var": None}
 
-    res = solver.check()
-    if res == z3.unsat:
+    res = solver.solve()
+    if res != True:
         vprint("Unsat therefore search interrupted.")
         return None
-    if res == z3.unknown:
-        if solver.reason_unknown() == "timeout":
-            vprint("Timeout reached, search stopped.")
-            return None
-        else:
-            vprint("Error during the search, unknown status returned.")
-            return None
 
-    last_model = solver.model()
-    l_ind = [str(m) for m in last_model].index('l')
-    l_var = last_model[l_ind]
-    
-    l, coord_x, coord_y, rotation = z3_parse_solution(last_model, model_type)
+    last_model = solver.get_model()
+    var_list = [v[0] for v in last_model]
+    l_ind = [str(v) for v in var_list].index('l')
+    l_var = var_list[l_ind]
+    l, coord_x, coord_y, rotation = parse_solution(last_model, model_type)
+
     solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y , 'rotation': rotation}
     solution['l_var'] = l_var
 
@@ -137,23 +140,27 @@ def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
 
         if i > 0:
             check_time = time.perf_counter()
-            new_timeout = int(timeout*1000-(check_time-start_time)*1000)
-            if new_timeout < 0:
+            remained_time = int(timeout*1000-(check_time-start_time)*1000)
+            if remained_time < 0:
                 vprint("Timeout reached, search stopped.")
                 return opt_sol, timeout
-            solver.set("timeout", new_timeout)
 
         curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
-        curr_sol = run_solver_once(solver, model_type, verbose)
+        try: 
+            curr_sol = run_solver_once(solver, model_type, verbose)
+        except SolverReturnedUnknownResultError:
+            print("Timeout reached, search stopped.")
+            return opt_sol, timeout
+
         if curr_sol != None:
             if curr_sol['solution']['l'] < curr_l:
                 opt_sol = curr_sol['solution']
-                vprint(f"Found solution with l={opt_sol['l']}, low={low} - up={up}")
+            vprint(f"Found solution with l={curr_sol['solution']['l']}, low={low} - up={up}")
             l_var = curr_sol['l_var']
             up = l_guess
             # Add constraints to l
             vprint(f"Add constraint l < {up}.")
-            solver.add(l_var() < up)
+            solver.add_assertion(LT(l_var, Int(up)))
         else:
             low = l_guess + 1
             vprint(f"No solutions found in the last run.")
@@ -161,3 +168,200 @@ def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
     end_time = time.perf_counter()
 
     return opt_sol, (end_time-start_time)
+
+
+
+# We append to the string all the script to avoid writing it manually
+def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
+    # Lower and upper bounds for the height
+    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+    l_up = sum(heights)
+    lines = []
+
+    # Options
+    lines.append(f"(set-logic {logic})")
+
+    # Variables declaration
+    lines += [f"(declare-fun coord_x{i} () Int)" for i in range(N)]
+    lines += [f"(declare-fun coord_y{i} () Int)" for i in range(N)]
+    lines.append("(declare-fun l () Int)")
+
+    # Domain of variables
+    lines += [f"(assert (and (>= coord_x{i} 0) (<= coord_x{i} {W-min(widths)})))" for i in range(N)]
+    lines += [f"(assert (and (>= coord_y{i} 0) (<= coord_y{i} {l_up-min(heights)})))" for i in range(N)]
+    lines.append(f"(assert (and (>= l {l_low}) (<= l {l_up})))")
+
+
+    # Non-Overlap constraints, at least one needs to be satisfied
+    for i in range(N):
+        for j in range(N):
+            if i < j:
+                lines.append(f"(assert (or (<= (+ coord_x{i} {widths[i]}) coord_x{j}) "
+                                         f"(<= (+ coord_y{i} {heights[i]}) coord_y{j}) "
+                                         f"(>= (- coord_x{i} {widths[j]}) coord_x{j}) "
+                                         f"(>= (- coord_y{i} {heights[j]}) coord_y{j})))"
+                )
+
+    # Boundary constraints
+    lines += [f"(assert (and (<= (+ coord_x{i} {widths[i]}) {W}) (<= (+ coord_y{i} {heights[i]}) l)))" for i in range(N)]
+
+    
+    # Cumulative constraints 
+    for w in widths:
+        sum_var = [f"(ite (and (<= coord_y{i} {w}) (< {w} (+ coord_y{i} {heights[i]}))) {widths[i]} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) {W}))")
+
+    for h in heights:
+        sum_var = [f"(ite (and (<= coord_x{i} {h}) (< {h} (+ coord_x{i} {widths[i]}))) {heights[i]} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) l))")
+
+    # Symmetry breaking same size 
+    for i in range(N):
+        for j in range(N):
+            if i < j:
+                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (<= coord_x{i} coord_x{j}) true))")
+    
+
+    # Symmetry breaking that inserts the circuit with the maximum area in (0, 0)
+    areas = [widths[i]*heights[i] for i in range(N)]
+    max_area_ind = areas.index(max(areas))
+    lines.append(f"(assert (= coord_x{max_area_ind} 0))")
+    lines.append(f"(assert (= coord_y{max_area_ind} 0))")
+
+    lines.append("(check-sat)")
+    for i in range(N):
+        lines.append(f"(get-value (coord_x{i}))")
+        lines.append(f"(get-value (coord_y{i}))")
+    lines.append("(get-value (l))")
+    
+    with open(f"{root_path}/src/model.smt2", "w+") as f:
+        for line in lines:
+            f.write(line + '\n')
+
+    return l_up
+
+
+# We append to the string all the script to avoid writing it manually
+def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
+    # Lower and upper bounds for the height
+    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+    l_up = sum([max(heights[i], widths[i]) for i in range(N)])
+    lines = []
+
+    # Options
+    lines.append(f"(set-logic {logic})")
+
+    # Variables declaration
+    lines += [f"(declare-fun coord_x{i} () Int)" for i in range(N)]
+    lines += [f"(declare-fun coord_y{i} () Int)" for i in range(N)]
+    lines += [f"(declare-fun rot{i} () Bool)" for i in range(N)]
+    lines += [f"(declare-fun w_real{i} () Int)" for i in range(N)]
+    lines += [f"(declare-fun h_real{i} () Int)" for i in range(N)]
+
+    lines.append("(declare-fun l () Int)")
+
+    # Domain of variables
+    coord_up = min(widths + heights)
+    lines += [f"(assert (and (>= coord_x{i} 0) (<= coord_x{i} {W-coord_up})))" for i in range(N)]
+    lines += [f"(assert (and (>= coord_y{i} 0) (<= coord_y{i} {l_up-coord_up})))" for i in range(N)]
+    lines += [f"(assert (ite rot{i} (= w_real{i} {heights[i]}) (= w_real{i} {widths[i]})))" for i in range(N)]
+    lines += [f"(assert (ite rot{i} (= h_real{i} {widths[i]}) (= h_real{i} {heights[i]})))" for i in range(N)]
+
+    lines.append(f"(assert (and (>= l {l_low}) (<= l {l_up})))")
+
+    # Boundary constraints
+    lines += [f"(assert (and (<= (+ coord_x{i} w_real{i}) {W}) (<= (+ coord_y{i} h_real{i}) l)))" for i in range(N)]
+
+    # Non-Overlap constraints, at least one needs to be satisfied
+    for i in range(N):
+        for j in range(N):
+            if i < j:
+                lines.append(f"(assert (or (<= (+ coord_x{i} w_real{i}) coord_x{j}) "
+                                         f"(<= (+ coord_y{i} h_real{i}) coord_y{j}) "
+                                         f"(>= (- coord_x{i} w_real{j}) coord_x{j}) "
+                                         f"(>= (- coord_y{i} h_real{j}) coord_y{j})))"
+                )
+
+    # Cumulative constraints 
+    for w in widths:
+        sum_var = [f"(ite (and (<= coord_y{i} {w}) (< {w} (+ coord_y{i} h_real{i}))) w_real{i} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) {W}))")
+
+    for h in heights:
+        sum_var = [f"(ite (and (<= coord_x{i} {h}) (< {h} (+ coord_x{i} w_real{i}))) h_real{i} 0)" for i in range(N)]
+        lines.append(f"(assert (<= (+ {' '.join(sum_var)}) l))")
+    
+    # Symmetry breaking same size 
+    for i in range(N):
+        for j in range(N):
+            if i < j:
+                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (< coord_x{i} coord_x{j}) true))")
+    
+    # Symmetry breakings for rotation
+    lines += [f"(assert (= rot{i} false))" for i in range(N) if widths[i] == heights[i]]
+    lines += [f"(assert (= rot{i} false))" for i in range(N) if heights[i] > W]
+
+    # Symmetry breaking that inserts the circuit with the maximum area in (0, 0)
+    areas = [widths[i]*heights[i] for i in range(N)]
+    max_area_ind = areas.index(max(areas))
+    lines.append(f"(assert (= coord_x{max_area_ind} 0))")
+    lines.append(f"(assert (= coord_y{max_area_ind} 0))")
+
+    lines.append("(check-sat)")
+    for i in range(N):
+        lines.append(f"(get-value (coord_x{i}))")
+        lines.append(f"(get-value (coord_y{i}))")
+        lines.append(f"(get-value (rot{i}))")
+    lines.append("(get-value (l))")
+    
+    with open(f"{root_path}/src/model_rot.smt2", "w+") as f:
+        for line in lines:
+            f.write(line + '\n')
+
+    return l_up
+
+
+def run_model(solver_name, instance_file, timeout, rotation, verbose, logic):
+    W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
+    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+
+    vprint = print if verbose else lambda *a, **k: None
+
+    if rotation:
+        model_type = ModelType.ROTATION.value
+        model_filename = "model_rot.smt2"
+        vprint("Generating the rotation model\n")
+        l_up = build_SMTLIB_model_rot(W, N, widths, heights, logic=logic)
+    else:
+        model_type = ModelType.BASE.value
+        model_filename = "model.smt2"
+        vprint("Generating the base model\n")
+        l_up = build_SMTLIB_model(W, N, widths, heights, logic=logic)
+
+    plot_file = plot_path.format(model=model_type, file=instance_file.split(".")[0])
+
+    if solver_name == SolverSMT.CVC4.value:
+        solver_options = {'tlimit': timeout*1000} 
+    else:
+        solver_options = {'timeout': timeout*1000} 
+        warnings.filterwarnings("ignore")
+        
+    solver = Solver(name=solver_name, solver_options=solver_options)
+    parser = SmtLib20Parser()
+    complete_path_model = f'./SMT/src/{model_filename}'
+    formula = parser.get_script_fname(complete_path_model).get_strict_formula()
+
+    solver.add_assertion(formula)
+    solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose)
+
+    if len(solution[0].keys()) != 0:
+        l, coord_x, coord_y, rotation = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y'],  solution[0]['rotation']
+        plot_cmap(
+            W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
+                plot_file, rotation=rotation, cmap_name="Set3"
+        )
+        #save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
+        return solution
+    else:
+        print(f"No solution found, something goes wrong.")
+        return None

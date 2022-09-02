@@ -3,6 +3,7 @@
 
 # venv environemnt
 .env/
+lenv/
 
 __pycache__/
 
@@ -10,3 +11,4 @@ __pycache__/
 *.png
 *.csv
 *.log
+
