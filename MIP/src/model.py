@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
     if save_stats:
         # TODO pass instances through cmd line
-        test_instances = (1, 40)
+        test_instances = (11, 17)
         configuration = None
 
         # FIXME instances configured differently for testing purpose

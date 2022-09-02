@@ -1,9 +1,10 @@
 import pulp
-import math
+import math, sys
 import numpy as np
 
 
 def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
+    
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
 
     # Lower and upper bounds for the height
@@ -40,33 +41,44 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
         upBound=1,
     )
 
+    max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
+    prob += coord_x[max_circuit] == 0, "Max circuit in x-0"
+    prob += coord_y[max_circuit] == 0, "Max circuit in y-0"
+
     # Non-Overlap constraints, at least one needs to be satisfied
     for i in set_N:
         for j in set_N:
             if i < j:
-                """ if widths[i] + widths[j] <= W:
+                if widths[i] + widths[j] <= W:
                     prob += (
-                        coord_x[i] + widths[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
+                        coord_x[i] + widths[i] <= coord_x[j] + (delta[i][j][0]) * W
                     )
                     prob += (
-                        coord_x[j] + widths[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
+                        coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
                     )
                 else:
-                    prob += delta[i][j][0] == 0
-                    prob += delta[j][i][0] == 0
+                    prob += delta[i][j][0] == 1
+                    prob += delta[j][i][0] == 1
 
                 prob += (
-                    coord_y[i] + heights[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
+                    coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][1]) * l_up
                 )
                 prob += (
-                    coord_y[j] + heights[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
+                    coord_y[j] + heights[j] <= coord_y[i] + (delta[j][i][1]) * l_up
                 )
                 prob += (
                     delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
-                    == 1
-                ) """
+                    <= 3
+                )
 
-                if widths[i] + widths[j] <= W:
+                """  if  i == max_circuit and widths[i] + widths[j] > W:
+                    prob += delta[i][j][1] == 1
+                    prob += delta[j][i][1] == 0
+                elif j == max_circuit and widths[i] + widths[j] > W:
+                    prob += delta[j][i][1] == 1
+                    prob += delta[i][j][1] == 0 """
+                
+                """ if widths[i] + widths[j] <= W:
                     prob += (
                         coord_x[i] + widths[i]
                         <= coord_x[j]
@@ -97,11 +109,7 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     coord_y[j] + heights[j]
                     <= coord_y[i]
                     + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                )
-
-    max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
-    prob += coord_x[max_circuit] == 0, "Max circuit in x-0"
-    prob += coord_y[max_circuit] == 0, "Max circuit in y-0"
+                ) """
 
     return prob
 
