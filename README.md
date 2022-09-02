@@ -9,7 +9,19 @@ The project work involves solving the chosen problem using:
 
 A set of problem instances is provided, but assumptions should not be made based on them.
 
-## CP and SAT
+## MIP solver
+
+- Requirements
+  - Model: [PuLP](https://github.com/coin-or/pulp), version 2.6.0
+  - Solvers:
+    - [CPLEX Optimizer](https://www.ibm.com/analytics/cplex-optimizer), version 22.1.0
+    - [MOSEK](https://www.mosek.com/), version 10.0.18
+- [Configure CPLEX for PULP](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#cplex)
+- Pulp for Python interface
+
+## Project assignment
+
+### CP and SAT
 
 Use MiniZinc and Z3 solvers.
 
@@ -23,7 +35,7 @@ Advices:
 6. Observe if any symmetry can be exploited to improve the CP model and the SAT encoding by adding symmetry breaking constraints. Note that when you enforce multiple symmetry breaking constraints, they should not conflict with each other (i.e., there must be at least one solution satisfying all the symmetry breaking constraints)
 7. Investigate the best way to search for solutions in CP which does not conflict with the symmetry breaking constraints. The symmetry breaking constraints should not conflict with the SAT search either.
 
-## SMT and MIP
+### SMT and MIP
 
 Use favourite solvers and languages (excluded MiniZinc)
 
@@ -33,17 +45,11 @@ Bonus point if the problem is encoded with solver-independent languages
 
 A solver can take advantage of a solution computed by another solver
 
-## Final remarks
+### Final remarks
 
 Solving processes that exceed a time limit of 5 minutes should be aborted
 
 - Ones too difficult to be solve within the time limit can be avoided: it is not necessary to succeed in solving all instances
-
-## MIP solver
-
-- CPLEX Optimizer
-  - [Installing CPLEX_PY](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#installing-cplex-py)
-- Pulp for Python interface
 
 ## Folder structure
 
@@ -51,7 +57,3 @@ Solving processes that exceed a time limit of 5 minutes should be aborted
   - Output files name with a corrispondence to the related input file
 - *~/src/*: source code
 - *README*: basic instructions for execution
-
-## Further reading
-
-- [MIP non-overlapping constraint](https://yetanothermathprogrammingconsultant.blogspot.com/2017/07/rectangles-no-overlap-constraints.html)
