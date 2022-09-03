@@ -28,7 +28,7 @@ if __name__ == "__main__":
     if test_range is not None:
 
         stat_file = statistics_path.format(model=model_type, 
-                        file=f"{solver_name}_test_{test_range[0]}-{test_range[1]+1}.csv"
+                        file=f"{solver_name}_test_{test_range[0]}-{test_range[1]}.csv"
                     )
         solutions = []
 
@@ -40,7 +40,8 @@ if __name__ == "__main__":
                 solutions.append({'instance':i, 'l': inst_sol['l'], 'time': inst_time})
         
         for el in solutions:
-            print(f"Found solution l={el['l']} for instance {el['instance']} in {el['time']} seconds.")
+            if verbose:
+                print(f"Found solution l={el['l']} for instance {el['instance']} in {el['time']} seconds.")
     else:
         stat_file = statistics_path.format(model=model_type, file=f"{solver_name}_{instance_file[:-4]}.csv")
         solution, ex_time = run_model(solver_name, instance_file, timeout, rotation, verbose, logic, search_method, stat_file)

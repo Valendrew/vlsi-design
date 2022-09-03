@@ -63,8 +63,8 @@ def get_w_and_h_from_txt(file_name):
         with open(complete_path) as fin:
             for i, data in enumerate(fin.readlines()):
                 if i != 0 and i != 1:
-                    w, h = data.split(" ")
-                    circuits.append((w, h.rstrip()))
+                    data = data.split(" ")
+                    circuits.append((data[0], data[1].rstrip()))
         return circuits
     else:
         print("ERROR: the instance path doesn't exists.")
@@ -409,7 +409,7 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, sea
             W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
                 plot_file, rotation=rotation, cmap_name="turbo_r"
         )
-        #save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
+        save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
         save_statistics(stat_file, solution_obj)
         return solution
     else:
