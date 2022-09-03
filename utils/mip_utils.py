@@ -4,8 +4,25 @@ from typing import List
 import pulp
 import mosek
 
-from utils.types import DEFAULT_TIMEOUT, ModelType, SolverMIP
+from utils.types import DEFAULT_TIMEOUT, ModelType, Solution, SolverMIP
 
+def build_mip_solution(prob: pulp.LpProblem, sol: Solution, N: int, model_type: ModelType):
+    sol.height = round(pulp.value(prob.objective))
+    rotation = [False] * N
+    coords = {"x": [None] * N, "y": [None] * N}
+    for v in prob.variables():
+        # print(f"{v.name}: {v.value()}")
+        if str(v.name).startswith("coord_x"):
+            coords["x"][int(v.name[8:])] = round(v.varValue)
+        elif str(v.name).startswith("coord_y"):
+            coords["y"][int(v.name[8:])] = round(v.varValue)
+        elif str(v.name).startswith("rot"):
+            rotation[int(v.name[4:])] = bool(round(v.varValue))
+
+    sol.coords = coords
+
+    # FIXME use rotation from solver
+    sol.rotation = rotation if model_type == ModelType.ROTATION else None
 
 def parse_mip_argument():
     parser = argparse.ArgumentParser(description="MIP solver for VLSI")
