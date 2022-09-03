@@ -2,11 +2,15 @@ import argparse
 import time, math, warnings
 from os.path import exists, join, splitext
 
-from utils.types import ModelType, SolverSMT
+import sys 
+sys.path.append('./')
+
+from utils.types import ModelType, SolverSMT, Solution, StatusEnum
 from utils.plot import plot_cmap
 from utils.solution_log import save_solution
+from utils.manage_statistics import save_statistics
 
-from pysmt.shortcuts import LT, Int, Solver
+from pysmt.shortcuts import LT, Int, Solver, Equals
 from pysmt.exceptions import SolverReturnedUnknownResultError
 from pysmt.smtlib.parser import SmtLib20Parser
 
@@ -96,79 +100,11 @@ def check_smt_parameters(data_path):
                     action='store_true')
     mode.add_argument('-test', '--test-smt', dest='test', help='Specify the interval of instances to run the solver on.', 
                     nargs=2, type=int)
-
+    p.add_argument('-search', '--search-method', dest='search', help='Choose the search method to optimize the solution.',
+                    type=str, choices=['bin', 'lbound'], default="bin")
     args = p.parse_args()
     param = dict(args._get_kwargs())
     return param
-
-
-# It returns the solution found by the solver on the current formula
-def run_solver_once(solver, model_type, verbose):
-    vprint = print if verbose else lambda *a, **k: None
-
-    solution = {"solution":{}, "l_var": None}
-
-    res = solver.solve()
-    if res != True:
-        vprint("Unsat therefore search interrupted.")
-        return None
-
-    last_model = solver.get_model()
-    var_list = [v[0] for v in last_model]
-    l_ind = [str(v) for v in var_list].index('l')
-    l_var = var_list[l_ind]
-    l, coord_x, coord_y, rotation = parse_solution(last_model, model_type)
-
-    solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y , 'rotation': rotation}
-    solution['l_var'] = l_var
-
-    return solution
-
-
-# Offline OMT implementation for finding the minimum value of l
-def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
-    vprint = print if verbose else lambda *a, **k: None
-
-    low, up = l_low, l_up
-    opt_sol = {}
-
-    start_time = time.perf_counter()
-    i = 0
-    # Start binary search
-    while low < up:
-        l_guess = (low + up)//2
-
-        if i > 0:
-            check_time = time.perf_counter()
-            remained_time = int(timeout*1000-(check_time-start_time)*1000)
-            if remained_time < 0:
-                vprint("Timeout reached, search stopped.")
-                return opt_sol, timeout
-
-        curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
-        try: 
-            curr_sol = run_solver_once(solver, model_type, verbose)
-        except SolverReturnedUnknownResultError:
-            print("Timeout reached, search stopped.")
-            return opt_sol, timeout
-
-        if curr_sol != None:
-            if curr_sol['solution']['l'] < curr_l:
-                opt_sol = curr_sol['solution']
-            vprint(f"Found solution with l={curr_sol['solution']['l']}, low={low} - up={up}")
-            l_var = curr_sol['l_var']
-            up = l_guess
-            # Add constraints to l
-            vprint(f"Add constraint l < {up}.")
-            solver.add_assertion(LT(l_var, Int(up)))
-        else:
-            low = l_guess + 1
-            vprint(f"No solutions found in the last run.")
-        i += 1
-    end_time = time.perf_counter()
-
-    return opt_sol, (end_time-start_time)
-
 
 
 # We append to the string all the script to avoid writing it manually
@@ -321,7 +257,105 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
     return l_up
 
 
-def run_model(solver_name, instance_file, timeout, rotation, verbose, logic):
+# It returns the solution found by the solver on the current formula
+def run_solver_once(solver, model_type, verbose):
+    vprint = print if verbose else lambda *a, **k: None
+
+    solution = {"solution":{}, "l_var": None}
+
+    res = solver.solve()
+    if res != True:
+        vprint("Unsat therefore search interrupted.")
+        return None
+
+    last_model = solver.get_model()
+    var_list = [v[0] for v in last_model]
+    l_ind = [str(v) for v in var_list].index('l')
+    l_var = var_list[l_ind]
+    l, coord_x, coord_y, rotation = parse_solution(last_model, model_type)
+
+    solution['solution'] = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y , 'rotation': rotation}
+    solution['l_var'] = l_var
+
+    return solution
+
+
+# Offline OMT implementation for finding the minimum value of l
+def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
+    vprint = print if verbose else lambda *a, **k: None
+
+    low, up = l_low, l_up
+    opt_sol = {}
+
+    start_time = time.perf_counter()
+    i = 0
+    # Start binary search
+    while low < up:
+        l_guess = (low + up)//2
+
+        if i > 0:
+            check_time = time.perf_counter()
+            remained_time = int(timeout*1000-(check_time-start_time)*1000)
+            if remained_time < 0:
+                vprint("Timeout reached, search stopped.")
+                return opt_sol, timeout
+
+        curr_l = opt_sol['l'] if 'l' in opt_sol else l_up
+        try: 
+            curr_sol = run_solver_once(solver, model_type, verbose)
+        except SolverReturnedUnknownResultError:
+            vprint("Timeout reached, search stopped.")
+            return opt_sol, timeout
+
+        if curr_sol != None:
+            if curr_sol['solution']['l'] < curr_l:
+                opt_sol = curr_sol['solution']
+            vprint(f"Found solution with l={curr_sol['solution']['l']}, low={low} - up={up}")
+            l_var = curr_sol['l_var']
+            up = l_guess
+            # Add constraints to l
+            vprint(f"Add constraint l < {up}.")
+            solver.add_assertion(LT(l_var, Int(up)))
+        else:
+            low = l_guess + 1
+            vprint(f"No solutions found in the last run.")
+        i += 1
+    end_time = time.perf_counter()
+
+    return opt_sol, (end_time-start_time)
+
+
+# Apply a search starting from the minimum value of the l
+def low_bound_search(solver, parser, l_low, model_type, model_filename, timeout, verbose):
+    symb = list(parser.get_script_fname(model_filename).get_declared_symbols())
+    ind_l = [str(m) for m in symb].index('l')
+    l_var = symb[ind_l]
+    l_guess = l_low
+    solution = {}
+
+    solver.push()
+    solver.add_assertion(Equals(l_var, Int(l_guess)))
+    start_time = time.perf_counter()
+    try: 
+        while not solver.solve():
+            l_guess = l_low  + 1
+            solver.pop()
+            solver.push()
+            solver.add_assertion(Equals(l_var, Int(l_guess)))
+            if verbose:
+                print(f"Add constraint l={l_guess}")
+        end_time = time.perf_counter()
+    except SolverReturnedUnknownResultError:
+        print("Timeout reached, search stopped.")
+        return solution, timeout
+
+    model = solver.get_model()
+    l, coord_x, coord_y, rotation = parse_solution(model, model_type)
+    solution = {'l': l, 'coord_x': coord_x, 'coord_y': coord_y, 'rotation': rotation}
+    return solution, (end_time-start_time)
+
+
+def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, search_method, stat_file):
     W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
     l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
 
@@ -339,11 +373,18 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic):
         l_up = build_SMTLIB_model(W, N, widths, heights, logic=logic)
 
     plot_file = plot_path.format(model=model_type, file=instance_file.split(".")[0])
+    # Set some solution object variables
+    solution_obj = Solution()
+    solution_obj.input_name=instance_file[:-4]
+    solution_obj.width=W
+    solution_obj.n_circuits=N,
+    solution_obj.circuits=[[widths[i], heights[i]] for i in range(N)]
+    solution_obj.configuration = None
 
     if solver_name == SolverSMT.CVC4.value:
         solver_options = {'tlimit': timeout*1000} 
     else:
-        solver_options = {'timeout': timeout*1000} 
+        solver_options = {'timeout': timeout*1000, 'auto_config': True} 
         warnings.filterwarnings("ignore")
         
     solver = Solver(name=solver_name, solver_options=solver_options)
@@ -352,16 +393,26 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic):
     formula = parser.get_script_fname(complete_path_model).get_strict_formula()
 
     solver.add_assertion(formula)
-    solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose)
+    if search_method == "lbound":
+        solution = low_bound_search(solver, parser, l_low, model_type, complete_path_model, timeout, verbose)
+    else:
+        solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose)
 
     if len(solution[0].keys()) != 0:
         l, coord_x, coord_y, rotation = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y'],  solution[0]['rotation']
+        solution_obj.coords = {'x': coord_x, 'y': coord_y}
+        solution_obj.height = l
+        solution_obj.rotation = rotation
+        solution_obj.solve_time = solution[1]
+        solution_obj.status = StatusEnum.FEASIBLE
         plot_cmap(
             W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
-                plot_file, rotation=rotation, cmap_name="Set3"
+                plot_file, rotation=rotation, cmap_name="turbo_r"
         )
         #save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
+        save_statistics(stat_file, solution_obj)
         return solution
     else:
         print(f"No solution found, something goes wrong.")
-        return None
+        return None, 0
+
