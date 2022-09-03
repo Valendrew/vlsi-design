@@ -26,18 +26,33 @@ def get_minizinc_solution(
     result: Result, instance: Instance, sol: Solution
 ) -> Solution:
     # solutions
-    sol.coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
-    sol.height = result.solution.l
-
+    sol.height = result.objective
     # inputs
     sol.circuits = instance.__getitem__("CIRCUITS")
     sol.n_circuits = instance.__getitem__("N")
     sol.width = instance.__getitem__("W")
+
+    if hasattr(result.solution, "coord_x") and hasattr(result.solution, "coord_y"):
+        sol.coords = {"x": result.solution.coord_x, "y": result.solution.coord_y}
+    elif hasattr(result.solution, "place"):
+        var_place = result.solution.place
+        positions = result.solution.coords
+
+        coords = {"x": [None] * sol.n_circuits, "y": [None] * sol.n_circuits}
+
+        for i in range(len(var_place)):
+            nc = var_place[i]
+            for j in range(len(nc)):
+                if nc[j] == 1:
+                    coords["x"][i] = round(positions[j] % sol.width)
+                    coords["y"][i] = round(positions[j] // sol.width)
+        sol.coords = coords
+
     sol.rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
 
     ex_time = (
         result.statistics["solveTime"].total_seconds()
-        + result.statistics["initTime"].total_seconds()
+        + result.statistics["initTime"].total_seconds() if hasattr(result.statistics, "initTime") else 0
     )
     sol.solve_time = compute_solve_time(ex_time)
     return sol
@@ -63,7 +78,12 @@ def run_minizinc(
     else:
         td_timeout = None
 
-    result = instance.solve(timeout=td_timeout, free_search=free_search)
+    # TODO replace old instance.solve
+    result = instance.solve()
+    if free_search:
+        result = instance.solve(timeout=td_timeout, free_search=free_search)
+    else: 
+        result = instance.solve(timeout=td_timeout)
 
     # After the instance has been solved
     sol = Solution()

@@ -92,7 +92,7 @@ def run_mip_solver(
         rotation = [False] * N
         coords = {"x": [None] * N, "y": [None] * N}
         for v in prob.variables():
-            if round(v.varValue > 0 and str(v.name).startswith("place")):
+            if round(v.varValue) > 0 and str(v.name).startswith("place"):
                 circuit, pos =  [int(val) for val in v.name[6:].split("_")]
                 coords["x"][circuit] = round(positions[pos][1][0])
                 coords["y"][circuit] = round(positions[pos][1][1])
@@ -116,8 +116,8 @@ def compute_solution(
     plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
-        mz_solver = SolverMinizinc.CHUFFED
-        free_search = True
+        mz_solver = SolverMinizinc.CPLEX
+        free_search = False
 
         sol = run_minizinc(
             input_name,
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         sys.exit(2)
 
     s_time = time.time()
-    test_instances = (16, 30)
+    test_instances = (1, 30)
 
     if save_stats:
         # TODO pass instances through cmd line
