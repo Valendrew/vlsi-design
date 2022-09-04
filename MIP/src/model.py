@@ -167,7 +167,7 @@ def compute_tests(
         )
         widths = [i[0] for i in sol.circuits]
         heights = [i[0] for i in sol.circuits]
-        save_solution(run_type.value, model_type.value, input_name, (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
+        save_solution(run_type.value, model_type.value, input_name + ".txt", (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
 
 
 if __name__ == "__main__":
