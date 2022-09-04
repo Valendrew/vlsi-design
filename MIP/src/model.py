@@ -84,6 +84,8 @@ def run_mip_solver(
     sol.solve_time = compute_solve_time(prob.solutionTime)
 
     if SOLUTION_ADMISSABLE(sol.status):
+        if prob.solutionTime > timeout:
+            sol.status = StatusEnum.FEASIBLE
         sol = build_mip_solution(prob, sol, N, model_type)
         """ sol.height = round(l)
 
@@ -97,7 +99,6 @@ def run_mip_solver(
 
         sol.coords = coords
 
-        # FIXME use rotation from solver
         sol.rotation = rotation if model_type == ModelType.ROTATION else None """
     return sol
 

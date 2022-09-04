@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 
-def build_pulp_model(
+def build_positions_model(
     W: int, N: int, widths, heights
 ) -> Union[pulp.LpProblem, List[int]]:
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
@@ -96,12 +96,11 @@ def build_pulp_model(
 
 
 def build_first_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
-
+    set_N = range(N)
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
-
     # Lower and upper bounds for the height
     l_low = max(
-        max(heights), math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
+        max(heights), math.ceil(sum([widths[i] * heights[i] for i in set_N]) / W)
     )
     l_up = int(sum(heights))
 
@@ -109,13 +108,7 @@ def build_first_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
     l = pulp.LpVariable("l", lowBound=l_low, upBound=l_up, cat=pulp.LpInteger)
     prob += l, "Height of the plate"
 
-    prob += l >= l_low
-    prob += l <= l_up
-
     # Coordinate variables
-    set_N = range(N)
-    # cx_up = int(W - min(widths))
-    # cy_up = int(l_up - min(heights))
     coord_x = [
         pulp.LpVariable(
             f"coord_x_{i}", lowBound=0, upBound=int(W - widths[i]), cat=pulp.LpInteger
@@ -126,21 +119,15 @@ def build_first_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
         pulp.LpVariable(
             f"coord_y_{i}",
             lowBound=0,
-            upBound=int(l_low - heights[i]),
+            upBound=int(l_up - heights[i]),
             cat=pulp.LpInteger,
         )
         for i in set_N
     ]
-    # coord_x = pulp.LpVariable.dicts(
-    #     "coord_x", indices=set_N, lowBound=0, upBound=cx_up, cat=pulp.LpInteger
-    # )
-    # coord_y = pulp.LpVariable.dicts(
-    #     "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
-    # )
 
     # Boundary constraints
     for i in set_N:
-        prob += coord_x[i] + widths[i] <= W, f"X-axis of {i}-th coordinate bound"
+        # prob += coord_x[i] + widths[i] <= W, f"X-axis of {i}-th coordinate bound"
         prob += coord_y[i] + heights[i] <= l, f"Y-axis of {i}-th coordinate bound"
 
     # Booleans for OR condition
@@ -164,6 +151,11 @@ def build_first_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                 if widths[i] + widths[j] > W:
                     prob += delta[i][j][0] == 1
                     prob += delta[j][i][0] == 1
+                # TODO test on these constraints
+                if max_circuit == i:
+                    prob += delta[j][i][1] == 1
+                elif max_circuit == j:
+                    prob += delta[i][j][1] == 1
 
                 prob += coord_x[i] + widths[i] <= coord_x[j] + (delta[i][j][0]) * W
                 prob += coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
@@ -174,6 +166,7 @@ def build_first_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     <= 3
                 )
 
+                # TODO old constraints
                 """ if widths[i] + widths[j] > W:
                     prob += delta[i][j][0] == 0
                     prob += delta[j][i][0] == 0

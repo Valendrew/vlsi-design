@@ -20,8 +20,6 @@ def build_mip_solution(prob: pulp.LpProblem, sol: Solution, N: int, model_type: 
             rotation[int(v.name[4:])] = bool(round(v.varValue))
 
     sol.coords = coords
-
-    # FIXME use rotation from solver
     sol.rotation = rotation if model_type == ModelType.ROTATION else None
     return sol
 
@@ -74,13 +72,15 @@ def configure_cplex_solver(timeout: int, configuration: List[str] = None):
         )
         print(f"warmStart: {warmStart} - {options}")
     else:
-        options = ["set preprocessing symmetry 3"]
+        pass
+        # options = ["set preprocessing symmetry 5"]
+
         # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
     return pulp.CPLEX_CMD(
         mip=True,
         msg=solver_verbose,
         timeLimit=timeout,
-        options=options,
+        # options=options,
         warmStart=False,
     )
 
