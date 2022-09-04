@@ -186,7 +186,6 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    s_time = time.time()
     test_instances = (1, 30)
 
     if save_stats:
@@ -207,5 +206,3 @@ if __name__ == "__main__":
         )
     else:
         compute_solution(input_name, model_type, solver, timeout, verbose)
-
-    print(f"TIME from {min(test_instances)} and {max(test_instances)} : {time.time() - s_time}")
