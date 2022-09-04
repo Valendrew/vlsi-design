@@ -1,5 +1,4 @@
 include "globals.mzn";
-%TODO: avoid if then else because ineffective due to reification, use ->?
 
 % Inputs 
 int: W;
@@ -11,8 +10,8 @@ array[1..N] of int: widths = [CIRCUITS[i, 1] | i in 1..N];
 array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
-% Lower bound is the minimum height among circuits' ones
-int: l_low = ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W); % TODO: check correctness, otherwise use min(heights)
+% Lower bound is the maximum between the optimal height and the maximum one
+int: l_low = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W));
 % Upper bound is the sum of all circuit heights, as staking one above the other
 int: l_up = sum(heights);
 var l_low..l_up: l;
@@ -23,10 +22,6 @@ array [1..N] of var 0..l_up-min(heights): coord_y;
 
 
 %%%%%%%% CONSTRAINTS %%%%%%%%
-
-% Put the largest circuit in the first position, the instance 40 fails
-%int: max_ind = reverse(arg_sort([widths[i]*heights[i] | i in 1..N]))[1];
-%constraint coord_x[max_ind] = 0 /\ coord_y[max_ind] = 0;
 
 % Avoid overlapping between the circuits
 % Constrains rectangles i, given by their origins (x[i], y[i]) and sizes (dx[i], dy[i]), to be non-overlapping.

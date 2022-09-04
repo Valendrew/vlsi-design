@@ -8,9 +8,9 @@ array[1..N] of int: widths = [CIRCUITS[i, 1] | i in 1..N];
 array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
-% Lower bound is the minimum height among circuits' ones
-int: l_low = ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W); % TODO: check correctness, otherwise use min(heights)
-% Upper bound is the sum of all circuit heights, as staking one above the other
+% Lower bound is the maximum between the optimal height and the maximum height/width among circuits' ones
+int: l_low = max(max(heights++heights), ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W));
+% Upper bound is the sum of all circuit maximum dimension, as staking one above the other
 int: l_up = sum([max(heights[i], widths[i]) | i in 1..N]);
 var l_low..l_up: l;
 

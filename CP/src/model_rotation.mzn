@@ -10,10 +10,10 @@ array[1..N] of int: widths = [CIRCUITS[i, 1] | i in 1..N];
 array[1..N] of int: heights = [CIRCUITS[i, 2] | i in 1..N];
 
 % Variables
-% Lower bound is the maximum height among circuits' widths and heights
-int: l_low = ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W);%max(max(heights), max(widths));
+% Lower bound is the maximum between the optimal height and the maximum width/height
+int: l_low = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W));
 % Upper bound is the sum of all circuit heights, as staking one above the other + the sum of the widths
-int: l_up = sum([max(heights[i], widths[i]) | i in 1..N]);%ceil(l_low + sum(heights) / 2);
+int: l_up = sum([max(heights[i], widths[i]) | i in 1..N]);
 var l_low..l_up: l;
 
 
@@ -22,6 +22,7 @@ array [1..N] of var 0..W-min(min(heights),min(widths)): coord_x;
 array [1..N] of var 0..l_up-min(min(heights),min(widths)): coord_y;
 array [1..N] of var bool: rot;
 
+% w_real and h_real represent the actual value for the width and height of a circuit
 array [1..N] of var 1..max(max(widths), max(heights)): w_real = [if rot[i] then heights[i] else widths[i] endif | i in 1..N];
 array [1..N] of var 1..max(max(widths), max(heights)): h_real = [if rot[i] then widths[i] else heights[i] endif | i in 1..N];
 
@@ -59,15 +60,6 @@ predicate symm_breaking_axes() =
 
 constraint symm_breaking_same() /\ symm_breaking_axes();
 
-% Implied constraints, in each line the sum of the widths is equal to W (we compute only in the first and last row)
-% TODO: it speeds up the computation for the instances but it worsen the solution for the last ones
-%constraint (
-%      let{
-%            array[1..N] of var int: y_0 = [if coord_y[i] = 0 then w_real[i] else 0 endif | i in 1..N];
-%            array[1..N] of var int: y_l = [if coord_y[i] = l-h_real[i] then w_real[i] else 0 endif | i in 1..N];
-%      }in sum(y_0) == W /\ sum(y_l) == W
-%);
- 
 
 % Set rotation to false for the squared circuits
 constraint forall(i in 1..N)(
