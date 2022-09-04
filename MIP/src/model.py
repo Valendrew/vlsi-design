@@ -67,7 +67,7 @@ def run_mip_solver(
         raise BaseException("Model type not available")
 
     if solver == SolverMIP.CPLEX:
-        solver = configure_cplex_solver(timeout, configuration)
+            solver = configure_cplex_solver(timeout, configuration)
     elif solver == SolverMIP.MOSEK:
         solver = configure_mosek_solver(timeout)
     else:
@@ -161,7 +161,7 @@ def compute_tests(
             statistics_path, sol, configuration[i] if configuration else None
         )
         print(
-            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name} in time {sol.solve_time}"
         )
         if SOLUTION_ADMISSABLE(sol.status):
             widths = [i[0] for i in sol.circuits]

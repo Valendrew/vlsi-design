@@ -11,4 +11,4 @@ __pycache__/
 *.png
 *.csv
 *.log
-
+out-*.txt
