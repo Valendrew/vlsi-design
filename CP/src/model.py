@@ -11,10 +11,9 @@ from utils.cp_utils import (
 )
 
 from utils.manage_paths import format_plot_file, format_statistic_file
-from utils.solution_log import print_logging
-
-
-from utils.plot import plot, plot_cmap, plot_solution
+from utils.solution_log import print_logging, save_solution
+from utils.smt_utils import extract_input_from_txt
+from utils.plot import plot_solution
 from utils.manage_statistics import checking_instances, save_statistics
 from utils.types import (
     SOLUTION_ADMISSABLE,
@@ -24,7 +23,13 @@ from utils.types import (
 )
 from utils.minizinc_solver import run_minizinc
 
+
 run_type: RunType = RunType.CP
+root_path = "./CP"
+data_path = {
+    "dzn": "./vlsi-instances/dzn-instances/{file}",
+    "txt": "./vlsi-instances/txt-instances/{file}",
+}
 
 
 def compute_solution(
@@ -52,7 +57,12 @@ def compute_solution(
 
     print_logging(sol, verbose)
     plot_solution(sol, plot_file)
-    save_statistics(statistics_path, sol)
+    W, N, widths, heights = extract_input_from_txt(data_path["txt"], f"{input_name}.txt")
+    l = sol.height if hasattr(sol, "height") else 0
+    cx = sol.coords['x'] if hasattr(sol, "coords") else []
+    cy = sol.coords['y'] if hasattr(sol, "coords") else []
+    save_solution(root_path, model_type.value, f"{input_name}.txt", (W, N, l, widths, heights, cx, cy))
+    #save_statistics(statistics_path, sol)
 
     return sol
 

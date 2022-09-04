@@ -44,6 +44,9 @@ def save_solution(root, model, file_name, data):
     out_file = out_path.format(root=root, model=model, file=file_name)
 
     W, N, l, widths, heights, cx, cy = data
+    if len(cx) != N or len(cy) != N:
+        cx = [-1 for i in range(N)]
+        cy = [-1 for i in range(N)]
     lines = [f"{widths[i]} {heights[i]} {cx[i]} {cy[i]}\n" for i in range(N)]
     with open(out_file, "w+") as fout:
         fout.writelines([f"{W} {l}\n", f"{N}\n"])

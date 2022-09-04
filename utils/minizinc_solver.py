@@ -1,4 +1,3 @@
-import statistics
 from typing import Tuple
 from minizinc import Instance, Model, Solver, Result, Status, MiniZincError
 from utils.manage_paths import format_data_file, format_model_file
@@ -56,7 +55,7 @@ def get_minizinc_solution(
         result.statistics["solveTime"].total_seconds() + 
         initTime
     )
-    sol.solve_time = compute_solve_time(ex_time)
+    sol.solve_time = ex_time# compute_solve_time(ex_time)
     return sol
 
 
@@ -79,7 +78,7 @@ def run_minizinc(
         td_timeout = timedelta(seconds=timeout)
     else:
         td_timeout = None
-        
+
     try:
         if solver == SolverMinizinc.CHUFFED:
             result = instance.solve(timeout=td_timeout, free_search=free_search)
@@ -91,7 +90,7 @@ def run_minizinc(
         sol.input_name = input_name
         sol.status = StatusEnum.ERROR
         return sol
-
+        
     # After the instance has been solved
     sol = Solution()
     sol.input_name = input_name
