@@ -14,7 +14,6 @@ array[1..N] of int: heights = [CIRCUITS[i, 2] | i in set_I];
 int: l_bound = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W));
 % Height
 int: l = l_bound;
-var int: z = 0;
 
 % Set of TILES
 int: MAX_TILES = W * l;
@@ -44,7 +43,10 @@ array[set_I, set_J] of var 0..1: place::add_to_output;
 
 constraint forall (p in set_P) (sum (i in set_I, j in valid_i[i]) (corr_matrix[j,p] * place[i,j]) <= 1);
 constraint forall (i in set_I) (sum (j in valid_i[i]) (place[i,j]) == 1);
+
+% constraint forall (i in set_I) (sum (j in set_J diff valid_i[i]) (place[i,j]) == 0);
+
 constraint sum (i in set_I, j in valid_i[i], p in set_P) (corr_matrix[j,p] * place[i,j]) <= W * l;
-solve minimize z = 0;
+solve minimize l;
 
 output ["- The max height is \(l)."];

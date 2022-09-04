@@ -18,7 +18,7 @@ from utils.mip_utils import (
     create_configuration_dict,
     parse_mip_argument,
 )
-from utils.solution_log import print_logging
+from utils.solution_log import print_logging, save_solution
 from utils.smt_utils import extract_input_from_txt
 from utils.plot import plot_solution
 from utils.minizinc_solver import compute_solve_time, run_minizinc
@@ -150,9 +150,9 @@ def compute_tests(
     )
 
     for i in range(len(test_iterator)):
-        s_time = time.time()
+        input_name = f"ins-{test_iterator[i]}"
         sol = compute_solution(
-            f"ins-{test_iterator[i]}",
+            input_name,
             model_type,
             solver,
             timeout,
@@ -163,8 +163,11 @@ def compute_tests(
             statistics_path, sol, configuration[i] if configuration else None
         )
         print(
-            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time PY: {time.time() - s_time}, {solver.name}: {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
         )
+        widths = [i[0] for i in sol.circuits]
+        heights = [i[0] for i in sol.circuits]
+        save_solution(run_type.value, model_type.value, input_name, (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
 
 
 if __name__ == "__main__":
@@ -186,7 +189,7 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 30)
+    test_instances = (1, 5)
 
     if save_stats:
         # TODO pass instances through cmd line
