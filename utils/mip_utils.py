@@ -72,15 +72,14 @@ def configure_cplex_solver(timeout: int, configuration: List[str] = None):
         )
         print(f"warmStart: {warmStart} - {options}")
     else:
-        pass
+        options = []
         # options = ["set preprocessing symmetry 5"]
 
-        # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
     return pulp.CPLEX_CMD(
         mip=True,
         msg=solver_verbose,
         timeLimit=timeout,
-        # options=options,
+        options=options,
         warmStart=False,
     )
 

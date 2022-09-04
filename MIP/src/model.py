@@ -33,7 +33,7 @@ from utils.types import (
     StatusEnum,
 )
 
-from create_model import build_first_model, build_pulp_rotation_model
+from create_model import build_pulp_model, build_pulp_rotation_model
 
 run_type: RunType = RunType.MIP
 
@@ -60,7 +60,7 @@ def run_mip_solver(
 
     # Model selection
     if model_type == ModelType.BASE:
-        prob = build_first_model(W, N, widths, heights)
+        prob = build_pulp_model(W, N, widths, heights)
     elif model_type == ModelType.ROTATION:
         prob = build_pulp_rotation_model(W, N, widths, heights)
     else:
