@@ -85,7 +85,7 @@ def check_file(parser, path, data_path):
 
 # Check the parameters given to the script
 def check_smt_parameters(data_path):
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(description="SMT solver for VLSI")
     mode = p.add_mutually_exclusive_group(required=True)
 
     p.add_argument('-sol', '--solver', dest='solver_name', help='The name of the solver you want to use [z3, cvc4].',
@@ -110,7 +110,7 @@ def check_smt_parameters(data_path):
 # We append to the string all the script to avoid writing it manually
 def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
     # Lower and upper bounds for the height
-    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+    l_low = max(max(heights), math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W))
     l_up = sum(heights)
     lines = []
 
@@ -140,7 +140,6 @@ def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
 
     # Boundary constraints
     lines += [f"(assert (and (<= (+ coord_x{i} {widths[i]}) {W}) (<= (+ coord_y{i} {heights[i]}) l)))" for i in range(N)]
-
     
     # Cumulative constraints 
     for w in widths:
@@ -155,8 +154,8 @@ def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
     for i in range(N):
         for j in range(N):
             if i < j:
-                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (<= coord_x{i} coord_x{j}) true))")
-    
+                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]}))"
+                                        f" (and (<= coord_x{i} coord_x{j}) (<= coord_y{i} coord_y{j})) true))")    
 
     # Symmetry breaking that inserts the circuit with the maximum area in (0, 0)
     areas = [widths[i]*heights[i] for i in range(N)]
@@ -174,13 +173,13 @@ def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
         for line in lines:
             f.write(line + '\n')
 
-    return l_up
+    return l_low, l_up
 
 
 # We append to the string all the script to avoid writing it manually
 def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
     # Lower and upper bounds for the height
-    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
+    l_low = max(max(heights), math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W))
     l_up = sum([max(heights[i], widths[i]) for i in range(N)])
     lines = []
 
@@ -231,7 +230,8 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
     for i in range(N):
         for j in range(N):
             if i < j:
-                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]})) (< coord_x{i} coord_x{j}) true))")
+                lines.append(f"(assert (ite (and (= {widths[i]} {widths[j]}) (= {heights[i]} {heights[j]}))"
+                                        f" (and (<= coord_x{i} coord_x{j}) (<= coord_y{i} coord_y{j})) true))")
     
     # Symmetry breakings for rotation
     lines += [f"(assert (= rot{i} false))" for i in range(N) if widths[i] == heights[i]]
@@ -254,7 +254,7 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
         for line in lines:
             f.write(line + '\n')
 
-    return l_up
+    return l_low, l_up
 
 
 # It returns the solution found by the solver on the current formula
@@ -285,14 +285,18 @@ def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
     vprint = print if verbose else lambda *a, **k: None
 
     low, up = l_low, l_up
+    l_guess = up
+    l_var_backup = None
     opt_sol = {}
 
     start_time = time.perf_counter()
     i = 0
     # Start binary search
     while low < up:
+        up_backup = l_guess
         l_guess = (low + up)//2
 
+        # Check the time only if the search is already started
         if i > 0:
             check_time = time.perf_counter()
             remained_time = int(timeout*1000-(check_time-start_time)*1000)
@@ -312,12 +316,21 @@ def offline_omt(solver, l_low, l_up, model_type, timeout, verbose):
                 opt_sol = curr_sol['solution']
             vprint(f"Found solution with l={curr_sol['solution']['l']}, low={low} - up={up}")
             l_var = curr_sol['l_var']
+            l_var_backup = l_var
             up = l_guess
             # Add constraints to l
             vprint(f"Add constraint l < {up}.")
+            if i > 0:
+                solver.pop()
+            solver.push()
             solver.add_assertion(LT(l_var, Int(up)))
         else:
             low = l_guess + 1
+            up = up_backup
+            # Remove the previous constraint from the stack to search for a new solution
+            solver.pop()
+            solver.push()
+            solver.add_assertion(LT(l_var_backup, Int(up)))
             vprint(f"No solutions found in the last run.")
         i += 1
     end_time = time.perf_counter()
@@ -357,7 +370,6 @@ def low_bound_search(solver, parser, l_low, model_type, model_filename, timeout,
 
 def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, search_method, stat_file):
     W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
-    l_low = math.ceil(sum([widths[i]*heights[i] for i in range(N)]) / W)
 
     vprint = print if verbose else lambda *a, **k: None
 
@@ -365,12 +377,12 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, sea
         model_type = ModelType.ROTATION.value
         model_filename = "model_rot.smt2"
         vprint("Generating the rotation model\n")
-        l_up = build_SMTLIB_model_rot(W, N, widths, heights, logic=logic)
+        l_low, l_up = build_SMTLIB_model_rot(W, N, widths, heights, logic=logic)
     else:
         model_type = ModelType.BASE.value
         model_filename = "model.smt2"
         vprint("Generating the base model\n")
-        l_up = build_SMTLIB_model(W, N, widths, heights, logic=logic)
+        l_low, l_up = build_SMTLIB_model(W, N, widths, heights, logic=logic)
 
     plot_file = plot_path.format(model=model_type, file=instance_file.split(".")[0])
     # Set some solution object variables

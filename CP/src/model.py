@@ -1,7 +1,8 @@
 from distutils.command.config import config
 import logging
-from os.path import join as join_path
 import sys
+sys.path.append("./")
+
 from typing import List, Tuple, Union
 from utils.cp_utils import (
     check_cp_admissable_timeout,
@@ -36,6 +37,9 @@ def compute_solution(
 ):
     # plot path
     plot_file = format_plot_file(run_type, input_name, model_type)
+    statistics_path = format_statistic_file(
+        run_type, (0, 0), model_type, solver=solver.value
+    )
 
     sol = run_minizinc(
         input_name,
@@ -48,6 +52,7 @@ def compute_solution(
 
     print_logging(sol, verbose)
     plot_solution(sol, plot_file)
+    save_statistics(statistics_path, sol)
 
     return sol
 
@@ -61,6 +66,7 @@ def compute_tests(
     timeout: int,
     verbose: bool,
 ):
+    vprint = print if verbose else lambda *a, **k: None
     test_iterator = checking_instances(test_instances)
     statistics_path = format_statistic_file(
         run_type, test_instances, model_type, solver=solver.value
@@ -71,7 +77,7 @@ def compute_tests(
             f"ins-{i}", model_type, solver, timeout, free_search, verbose
         )
         save_statistics(statistics_path, sol)
-        print(
+        vprint(
             f"\n- Computed instance {i}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}"
         )
 
@@ -84,7 +90,7 @@ if __name__ == "__main__":
     free_search: bool = parser_args["freesearch"]
     timeout: int = parser_args["timeout"]
     verbose: bool = parser_args["verbose"]
-    save_stats: bool = parser_args["statistics"]
+    test_mode = parser_args["testing"]
 
     # Check if the solver is installed in the user's system
     if not check_cp_solver_exists(solver):
@@ -96,9 +102,9 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    if save_stats:
-        # TODO pass instances through cmd line
-        test_instances = (6, 10)
+    if test_mode is not None:
+        test_instances = (test_mode[0], test_mode[1])
         compute_tests(test_instances, model_type, solver, timeout, free_search, verbose)
     else:
-        compute_solution(input_name, model_type, solver, timeout, free_search, verbose)
+        sol = compute_solution(input_name, model_type, solver, timeout, free_search, verbose)
+
