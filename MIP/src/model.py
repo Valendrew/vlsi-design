@@ -189,7 +189,7 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 5)
+    test_instances = (1, 30)
 
     if save_stats:
         # TODO pass instances through cmd line
