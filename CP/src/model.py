@@ -42,9 +42,6 @@ def compute_solution(
 ):
     # plot path
     plot_file = format_plot_file(run_type, input_name, model_type)
-    statistics_path = format_statistic_file(
-        run_type, (0, 0), model_type, solver=solver.value
-    )
 
     sol = run_minizinc(
         input_name,
@@ -62,7 +59,6 @@ def compute_solution(
     cx = sol.coords['x'] if hasattr(sol, "coords") else []
     cy = sol.coords['y'] if hasattr(sol, "coords") else []
     save_solution(root_path, model_type.value, f"{input_name}.txt", (W, N, l, widths, heights, cx, cy))
-    #save_statistics(statistics_path, sol)
 
     return sol
 
@@ -114,7 +110,7 @@ if __name__ == "__main__":
 
     if test_mode is not None:
         test_instances = (test_mode[0], test_mode[1])
-        compute_tests(test_instances, model_type, solver, timeout, free_search, verbose)
+        compute_tests(test_instances, model_type, solver, free_search, timeout, verbose)
     else:
         sol = compute_solution(input_name, model_type, solver, timeout, free_search, verbose)
 

@@ -56,9 +56,9 @@ constraint symm_breaking_same() /\ symm_breaking_axes();
 
 
 solve :: seq_search([
-            int_search([l], input_order, indomain_min),%::restart_luby(250),
-            int_search(coord_x, input_order, indomain_min),
-            int_search(coord_y, input_order, indomain_min)])
+            int_search([l], input_order, indomain_min)::restart_luby(200),
+            int_search(coord_x, first_fail, indomain_min),
+            int_search(coord_y, first_fail, indomain_min)])
       minimize l;
 
 output ["- The max height is \(l).\n- The coordinates are:\n"];

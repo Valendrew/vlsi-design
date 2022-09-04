@@ -80,10 +80,7 @@ def run_minizinc(
         td_timeout = None
 
     try:
-        if solver == SolverMinizinc.CHUFFED:
-            result = instance.solve(timeout=td_timeout, free_search=free_search)
-        else:
-            result = instance.solve(timeout=td_timeout)
+        result = instance.solve(timeout=td_timeout, free_search=free_search)
     except MiniZincError as e:
         print(e)
         sol = Solution()
