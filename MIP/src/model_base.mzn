@@ -6,12 +6,14 @@ array[1..N, 1..2] of int: CIRCUITS;
 % Set of N
 set of int: set_I = 1..N;
 % Extract widths and heights for usability 
-array[1..N] of int: widths = [CIRCUITS[i, 1] | i in set_I];
-array[1..N] of int: heights = [CIRCUITS[i, 2] | i in set_I];
+array[set_I] of int: widths = [CIRCUITS[i, 1] | i in set_I];
+array[set_I] of int: heights = [CIRCUITS[i, 2] | i in set_I];
+
+int: max_circuit = arg_max([widths[i] * heights[i] | i in set_I]);
 
 % Variables
 % Lower bound is the minimum height among circuits' ones
-int: l_bound = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in 1..N]) / W));
+int: l_bound = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in set_I]) / W));
 % Height
 int: l = l_bound;
 
@@ -28,6 +30,8 @@ set of int: set_J = 1..(length(POSITIONS));
 array[set_I] of set of int: valid_i = [array2set([j | j in 1..length(POSITIONS) where -i in POSITIONS[j]]) | i in set_I];
 array[set_J] of int: coords::add_to_output = [POSITIONS[j][2] | j in set_J]; 
 
+int: j_max_circuit = min(valid_i[max_circuit]);
+
 function int: check_pos(int: j, int: p) =
   let {
     int: start_x = coords[j] mod W;
@@ -41,10 +45,12 @@ array[set_J, set_P] of 0..1: corr_matrix = array2d(set_J, set_P, [check_pos(j,p)
 
 array[set_I, set_J] of var 0..1: place::add_to_output;
 
+constraint place[max_circuit, j_max_circuit] = 1;
+
 constraint forall (p in set_P) (sum (i in set_I, j in valid_i[i]) (corr_matrix[j,p] * place[i,j]) <= 1);
 constraint forall (i in set_I) (sum (j in valid_i[i]) (place[i,j]) == 1);
 
-% constraint forall (i in set_I) (sum (j in set_J diff valid_i[i]) (place[i,j]) == 0);
+constraint forall (i in set_I) (sum (j in set_J diff valid_i[i]) (place[i,j]) == 0);
 
 constraint sum (i in set_I, j in valid_i[i], p in set_P) (corr_matrix[j,p] * place[i,j]) <= W * l;
 solve minimize l;

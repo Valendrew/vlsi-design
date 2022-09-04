@@ -23,6 +23,7 @@ def build_mip_solution(prob: pulp.LpProblem, sol: Solution, N: int, model_type: 
 
     # FIXME use rotation from solver
     sol.rotation = rotation if model_type == ModelType.ROTATION else None
+    return sol
 
 def parse_mip_argument():
     parser = argparse.ArgumentParser(description="MIP solver for VLSI")
@@ -73,7 +74,6 @@ def configure_cplex_solver(timeout: int, configuration: List[str] = None):
         )
         print(f"warmStart: {warmStart} - {options}")
     else:
-        warmStart = False
         options = ["set preprocessing symmetry 3"]
         # options = ["set preprocessing symmetry 5", "set output clonelog -1"]
     return pulp.CPLEX_CMD(
@@ -81,7 +81,7 @@ def configure_cplex_solver(timeout: int, configuration: List[str] = None):
         msg=solver_verbose,
         timeLimit=timeout,
         options=options,
-        warmStart=warmStart,
+        warmStart=False,
     )
 
 

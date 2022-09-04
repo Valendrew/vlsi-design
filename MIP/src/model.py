@@ -33,7 +33,7 @@ from utils.types import (
     StatusEnum,
 )
 
-from create_model import build_pulp_model, build_pulp_rotation_model
+from create_model import build_first_model, build_pulp_rotation_model
 
 run_type: RunType = RunType.MIP
 
@@ -45,8 +45,6 @@ def run_mip_solver(
     timeout: int,
     configuration=None,
 ):
-    solver_verbose = False
-
     sol = Solution()
     data_file = format_data_file(input_name, InputMode.TXT)
     # TODO change to take only data_file
@@ -62,7 +60,7 @@ def run_mip_solver(
 
     # Model selection
     if model_type == ModelType.BASE:
-        prob, positions, l = build_pulp_model(W, N, widths, heights)
+        prob = build_first_model(W, N, widths, heights)
     elif model_type == ModelType.ROTATION:
         prob = build_pulp_rotation_model(W, N, widths, heights)
     else:
@@ -86,8 +84,8 @@ def run_mip_solver(
     sol.solve_time = compute_solve_time(prob.solutionTime)
 
     if SOLUTION_ADMISSABLE(sol.status):
-        # build_mip_solution(prob, sol, N, model_type)
-        sol.height = round(l)
+        sol = build_mip_solution(prob, sol, N, model_type)
+        """ sol.height = round(l)
 
         rotation = [False] * N
         coords = {"x": [None] * N, "y": [None] * N}
@@ -100,7 +98,7 @@ def run_mip_solver(
         sol.coords = coords
 
         # FIXME use rotation from solver
-        sol.rotation = rotation if model_type == ModelType.ROTATION else None
+        sol.rotation = rotation if model_type == ModelType.ROTATION else None """
     return sol
 
 
@@ -165,9 +163,11 @@ def compute_tests(
         print(
             f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
         )
-        widths = [i[0] for i in sol.circuits]
-        heights = [i[0] for i in sol.circuits]
-        save_solution(run_type.value, model_type.value, input_name + ".txt", (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
+        if SOLUTION_ADMISSABLE(sol.status):
+            widths = [i[0] for i in sol.circuits]
+            heights = [i[0] for i in sol.circuits]
+
+            save_solution(run_type.value, model_type.value, input_name + ".txt", (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
 
 
 if __name__ == "__main__":
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 30)
+    test_instances = (1, 40)
 
     if save_stats:
         # TODO pass instances through cmd line
