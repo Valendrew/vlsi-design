@@ -52,7 +52,7 @@ constraint forall (i in set_I) (sum (j in valid_i[i]) (place[i,j]) == 1);
 
 constraint forall (i in set_I) (sum (j in set_J diff valid_i[i]) (place[i,j]) == 0);
 
-constraint sum (i in set_I, j in valid_i[i], p in set_P) (corr_matrix[j,p] * place[i,j]) <= W * l;
+% constraint sum (i in set_I, j in valid_i[i], p in set_P) (corr_matrix[j,p] * place[i,j]) <= N;
 solve minimize l;
 
 output ["- The max height is \(l)."];

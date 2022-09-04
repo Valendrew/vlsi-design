@@ -154,10 +154,10 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     prob += delta[i][j][0] == 1
                     prob += delta[j][i][0] == 1
                 # TODO test on these constraints
-                if max_circuit == i:
-                    prob += delta[j][i][1] == 1
-                elif max_circuit == j:
-                    prob += delta[i][j][1] == 1
+                # if max_circuit == i:
+                #     prob += delta[j][i][1] == 1
+                # elif max_circuit == j:
+                #     prob += delta[i][j][1] == 1
 
                 prob += coord_x[i] + widths[i] <= coord_x[j] + (delta[i][j][0]) * W
                 prob += coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
