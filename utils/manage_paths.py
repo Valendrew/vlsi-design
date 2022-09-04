@@ -37,7 +37,7 @@ def format_plot_file(
 
 
 def format_model_file(run_type: RunType, model_type: ModelType):
-    return join_path(run_type.value, f"src/model_{model_type.value}.mzn")
+    return join_path(".", run_type.value, f"src/model_{model_type.value}.mzn")
 
 
 def format_statistic_file(

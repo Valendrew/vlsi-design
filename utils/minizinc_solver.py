@@ -70,8 +70,8 @@ def run_minizinc(
     model_file = format_model_file(run_type, model_type)
 
     model = Model(model_file)
-    solver = Solver.lookup(solver.value)
-    instance = Instance(solver, model)
+    solver_exec = Solver.lookup(solver.value)
+    instance = Instance(solver_exec, model)
     instance.add_file(data_file, parse_data=True)
     if timeout:
         td_timeout = timedelta(seconds=timeout)
@@ -79,7 +79,6 @@ def run_minizinc(
         td_timeout = None
 
     # TODO replace old instance.solve
-    result = instance.solve()
     if free_search:
         result = instance.solve(timeout=td_timeout, free_search=free_search)
     else: 
