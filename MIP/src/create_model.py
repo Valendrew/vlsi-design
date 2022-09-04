@@ -11,7 +11,9 @@ def build_positions_model(
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
 
     # Lower and upper bounds for the height
-    l_bound = math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
+    l_bound = max(
+        max(heights), math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
+    )
 
     # Height variable
     l = pulp.LpVariable("l", lowBound=l_bound, upBound=l_bound, cat=pulp.LpInteger)
