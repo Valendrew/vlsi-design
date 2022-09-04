@@ -18,6 +18,7 @@ class ModelType(Enum):
 class SolverMinizinc(Enum):
     GECODE: str = "gecode"
     CHUFFED: str = "chuffed"
+    CPLEX: str = "cplex"
 
 
 class SolverMIP(Enum):

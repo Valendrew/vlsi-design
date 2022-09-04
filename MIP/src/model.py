@@ -1,5 +1,6 @@
 import logging
 import sys
+import time
 from typing import List, Tuple, Union
 
 sys.path.append("./")
@@ -9,6 +10,7 @@ import pulp
 from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
 from utils.manage_statistics import checking_instances, save_statistics
 from utils.mip_utils import (
+    build_mip_solution,
     check_mip_admissable_timeout,
     check_mip_solver_exists,
     configure_cplex_solver,
@@ -60,7 +62,7 @@ def run_mip_solver(
 
     # Model selection
     if model_type == ModelType.BASE:
-        prob = build_pulp_model(W, N, widths, heights)
+        prob, positions, l = build_pulp_model(W, N, widths, heights)
     elif model_type == ModelType.ROTATION:
         prob = build_pulp_rotation_model(W, N, widths, heights)
     else:
@@ -84,23 +86,21 @@ def run_mip_solver(
     sol.solve_time = compute_solve_time(prob.solutionTime)
 
     if SOLUTION_ADMISSABLE(sol.status):
-        sol.height = round(pulp.value(prob.objective))
+        # build_mip_solution(prob, sol, N, model_type)
+        sol.height = round(l)
+
         rotation = [False] * N
         coords = {"x": [None] * N, "y": [None] * N}
         for v in prob.variables():
-            # print(f"{v.name}: {v.value()}")
-            if str(v.name).startswith("coord_x"):
-                coords["x"][int(v.name[8:])] = round(v.varValue)
-            elif str(v.name).startswith("coord_y"):
-                coords["y"][int(v.name[8:])] = round(v.varValue)
-            elif str(v.name).startswith("rot"):
-                rotation[int(v.name[4:])] = bool(round(v.varValue))
+            if round(v.varValue) > 0 and str(v.name).startswith("place"):
+                circuit, pos =  [int(val) for val in v.name[6:].split("_")]
+                coords["x"][circuit] = round(positions[pos][1][0])
+                coords["y"][circuit] = round(positions[pos][1][1])
 
         sol.coords = coords
 
         # FIXME use rotation from solver
         sol.rotation = rotation if model_type == ModelType.ROTATION else None
-
     return sol
 
 
@@ -116,8 +116,8 @@ def compute_solution(
     plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
-        mz_solver = SolverMinizinc.CHUFFED
-        free_search = True
+        mz_solver = SolverMinizinc.CPLEX
+        free_search = False
 
         sol = run_minizinc(
             input_name,
@@ -150,6 +150,7 @@ def compute_tests(
     )
 
     for i in range(len(test_iterator)):
+        s_time = time.time()
         sol = compute_solution(
             f"ins-{test_iterator[i]}",
             model_type,
@@ -162,7 +163,7 @@ def compute_tests(
             statistics_path, sol, configuration[i] if configuration else None
         )
         print(
-            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name} {f'in time PY: {time.time() - s_time}, {solver.name}: {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}\n"
         )
 
 
@@ -185,9 +186,11 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
+    s_time = time.time()
+    test_instances = (1, 30)
+
     if save_stats:
         # TODO pass instances through cmd line
-        test_instances = (11, 17)
         configuration = None
 
         # FIXME instances configured differently for testing purpose
@@ -204,3 +207,5 @@ if __name__ == "__main__":
         )
     else:
         compute_solution(input_name, model_type, solver, timeout, verbose)
+
+    print(f"TIME from {min(test_instances)} and {max(test_instances)} : {time.time() - s_time}")

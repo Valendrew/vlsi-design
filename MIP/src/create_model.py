@@ -1,9 +1,63 @@
+from typing import List, Union
 import pulp
-import math, sys
+import math
 import numpy as np
+import time
 
 
-def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
+def build_pulp_model(W: int, N: int, widths, heights) -> Union[pulp.LpProblem, List[int]]:
+    prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
+
+    # Lower and upper bounds for the height
+    l_bound = math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
+
+    # Height variable
+    l = pulp.LpVariable("l", lowBound=l_bound, upBound=l_bound, cat=pulp.LpInteger)
+    prob += l, "Height of the plate"
+
+    # Coordinate variables
+    set_I = range(N)
+    s_time = time.time()
+    positions = [(i, (r, c)) for i in set_I for c in range(0, l_bound-heights[i]+1) for r in range(0, W-widths[i]+1)]
+    print(f"POSITIONS TIME: {time.time() - s_time}")
+    
+    valid_positions = list(range(len(positions)))
+    set_J = valid_positions
+
+    tiles_strip = list(range(W * l_bound))
+    set_P = tiles_strip
+
+    def check_position(i, j):
+        n_circuit, pos = positions[i]
+        coord_x, coord_y = j % W, j // W
+        return coord_x in range(pos[0], pos[0]+widths[n_circuit]) and coord_y in range(pos[1], pos[1]+heights[n_circuit]) 
+
+    s_time = time.time()
+    correspondence_matrix = [[check_position(i, j) for j in set_P] for i in set_J]
+    print(f"CORRISPONDENCE MATRIX TIME: {time.time() - s_time}")
+
+    s_time = time.time()
+    place = [[pulp.LpVariable(f"place_{i}_{j}", lowBound=0, upBound=1, cat=pulp.LpBinary) if positions[j][0] == i else None for j in set_J] for i in set_I]
+    print(f"PLACE TIME: {time.time() - s_time}")
+
+    s_time = time.time()
+    for p in set_P:
+        prob += pulp.lpSum([correspondence_matrix[j][p] * place[i][j] for i in set_I for j in set_J if positions[j][0] == i]) <= 1
+    print(f"CONSTRAINTS 1 TIME: {time.time() - s_time}")
+
+    s_time = time.time()
+    for i in set_I:
+        prob += pulp.lpSum([place[i][j] for j in set_J if positions[j][0] == i]) == 1
+    print(f"CONSTRAITNS 2 TIME: {time.time() - s_time}")
+
+    s_time = time.time()
+    prob += pulp.lpSum([correspondence_matrix[j][p] * place[i][j] for i in set_I for j in set_J if positions[j][0] == i for p in set_P]) <= W * l_bound
+    print(f"CONSTRAINTS 3 TIME: {time.time() - s_time}")
+    
+
+    return prob, positions, l_bound
+
+def old_build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
     
     prob = pulp.LpProblem("vlsi", pulp.LpMinimize)
 
@@ -19,17 +73,19 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
     set_N = range(N)
     cx_up = int(W - min(widths))
     cy_up = int(l_up - min(heights))
-    coord_x = pulp.LpVariable.dicts(
-        "coord_x", indices=set_N, lowBound=0, upBound=cx_up, cat=pulp.LpInteger
-    )
-    coord_y = pulp.LpVariable.dicts(
-        "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
-    )
+    coord_x = [pulp.LpVariable(f"coord_x_{i}", lowBound=0, upBound=int(W - widths[i]), cat=pulp.LpInteger) for i in set_N]
+    coord_y = [pulp.LpVariable(f"coord_y_{i}", lowBound=0, upBound=int(l_low - heights[i]), cat=pulp.LpInteger) for i in set_N]
+    # coord_x = pulp.LpVariable.dicts(
+    #     "coord_x", indices=set_N, lowBound=0, upBound=cx_up, cat=pulp.LpInteger
+    # )
+    # coord_y = pulp.LpVariable.dicts(
+    #     "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
+    # )
 
     # Boundary constraints
     for i in set_N:
         prob += coord_x[i] + widths[i] <= W, f"X-axis of {i}-th coordinate bound"
-        prob += coord_y[i] + heights[i] <= l, f"Y-axis of {i}-th coordinate bound"
+        prob += coord_y[i] + heights[i] <= l_low, f"Y-axis of {i}-th coordinate bound"
 
     # Booleans for OR condition
     set_C = range(2)
@@ -60,10 +116,10 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     coord_x[j] + widths[j] <= coord_x[i] + (delta[j][i][0]) * W
                 )
                 prob += (
-                    coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][1]) * l_up
+                    coord_y[i] + heights[i] <= coord_y[j] + (delta[i][j][1]) * l_low
                 )
                 prob += (
-                    coord_y[j] + heights[j] <= coord_y[i] + (delta[j][i][1]) * l_up
+                    coord_y[j] + heights[j] <= coord_y[i] + (delta[j][i][1]) * l_low
                 )
                 prob += (
                     delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
