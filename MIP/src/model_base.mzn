@@ -30,8 +30,6 @@ set of int: set_J = 1..(length(POSITIONS));
 array[set_I] of set of int: valid_i = [array2set([j | j in 1..length(POSITIONS) where -i in POSITIONS[j]]) | i in set_I];
 array[set_J] of int: coords::add_to_output = [POSITIONS[j][2] | j in set_J]; 
 
-int: j_max_circuit = min(valid_i[max_circuit]);
-
 function int: check_pos(int: j, int: p) =
   let {
     int: start_x = coords[j] mod W;
@@ -44,8 +42,6 @@ function int: check_pos(int: j, int: p) =
 array[set_J, set_P] of 0..1: corr_matrix = array2d(set_J, set_P, [check_pos(j,p) | j in set_J, p in set_P]);
 
 array[set_I, set_J] of var 0..1: place::add_to_output;
-
-constraint place[max_circuit, j_max_circuit] = 1;
 
 constraint forall (p in set_P) (sum (i in set_I, j in valid_i[i]) (corr_matrix[j,p] * place[i,j]) <= 1);
 constraint forall (i in set_I) (sum (j in valid_i[i]) (place[i,j]) == 1);

@@ -162,7 +162,7 @@ def compute_tests(
             statistics_path, sol, configuration[i] if configuration else None
         )
         print(
-            f"- Computed instance {test_iterator[i]}: {sol.status.name} in time {sol.solve_time}"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name}{'in time' + sol.solve_time if SOLUTION_ADMISSABLE[sol.status] else ''}"
         )
         if SOLUTION_ADMISSABLE(sol.status):
             widths = [i[0] for i in sol.circuits]
