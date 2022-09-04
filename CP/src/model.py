@@ -99,6 +99,6 @@ if __name__ == "__main__":
     if save_stats:
         # TODO pass instances through cmd line
         test_instances = (6, 10)
-        compute_tests(test_instances, model_type, solver, free_search, timeout, verbose)
+        compute_tests(test_instances, model_type, solver, timeout, free_search, verbose)
     else:
-        compute_solution(input_name, model_type, solver, free_search, timeout, verbose)
+        compute_solution(input_name, model_type, solver, timeout, free_search, verbose)

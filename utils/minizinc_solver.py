@@ -51,8 +51,8 @@ def get_minizinc_solution(
     sol.rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
 
     ex_time = (
-        result.statistics["solveTime"].total_seconds()
-        + result.statistics["initTime"].total_seconds() if hasattr(result.statistics, "initTime") else 0
+        result.statistics["solveTime"].total_seconds() + 
+        result.statistics["initTime"].total_seconds()
     )
     sol.solve_time = compute_solve_time(ex_time)
     return sol
@@ -78,11 +78,7 @@ def run_minizinc(
     else:
         td_timeout = None
 
-    # TODO replace old instance.solve
-    if free_search:
-        result = instance.solve(timeout=td_timeout, free_search=free_search)
-    else: 
-        result = instance.solve(timeout=td_timeout)
+    result = instance.solve(timeout=td_timeout, free_search=free_search)
 
     # After the instance has been solved
     sol = Solution()
