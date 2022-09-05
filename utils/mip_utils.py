@@ -25,7 +25,8 @@ def build_mip_solution(prob: pulp.LpProblem, sol: Solution, N: int, model_type: 
 
 def parse_mip_argument():
     parser = argparse.ArgumentParser(description="MIP solver for VLSI")
-    parser.add_argument("instance")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("-ins", "--instance", help="The name of the instance file without extension (i.e. ins-1 and not ins-1.dzn)")
     parser.add_argument(
         "-m", "--model", default=ModelType.BASE, choices=[e.value for e in ModelType]
     )
@@ -35,7 +36,8 @@ def parse_mip_argument():
     parser.add_argument("-t", "--timeout", default=DEFAULT_TIMEOUT, type=int)
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
     # TODO merge statistics with instance using append or something similiar
-    parser.add_argument("-st", "--statistics", action="store_true", default=False)
+    mode.add_argument("-test", "--testing", type=int, nargs=2, help="Specify the interval of instances to run the solver on.")
+    # parser.add_argument("-st", "--statistics", action="store_true", default=False)
 
     args = parser.parse_args()
     return vars(args)

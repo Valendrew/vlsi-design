@@ -3,19 +3,24 @@
 This directory contains the python script to run the constraint programming model (both basic and rotation ones).
 
 ## Installation
+
 To install and activate the conda environment:
+
 ```shell
 conda env create -f environment.yml
 conda activate unibo-cdmo
 ```
 
 ## Usage
-You can run the CP solver using the python version of the anaconda environment:
+
+You can run the CP solver from the root folder using:
+
 ```shell
-python model.py [-h] [-ins INSTANCE_NAME]|[-test FROM TO] [-m {base, rotation}] [-s {gecode, chuffed}] [-f] [-t TIMEOUT]
+python CP/src/model.py [-h] [-ins INSTANCE_NAME]|[-test FROM TO] [-m {base, rotation}] [-s {gecode, chuffed}] [-f] [-t TIMEOUT]
 ```
 
 Where:
+
 - -ins is the name of the instance you want to run, e.g. "ins-10"
 - -test takes as input the range of instances we want to test and it's in XOR with -ins
 - -m checks if you want to run the basic or the rotation model

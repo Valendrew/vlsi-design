@@ -1,12 +1,13 @@
+import sys
+sys.path.append("./")
+
 from glob import glob
 from os import makedirs
 from os.path import join as join_path, exists
 import logging
 from re import I
 from typing import Iterator, List, Union
-
 from utils.types import InputMode, ModelType, RunType, StatisticMode
-
 
 def format_data_file(file: str, mode: InputMode):
     file_path = f"./vlsi-instances/{mode.value}-instances/{file}.{mode.value}"

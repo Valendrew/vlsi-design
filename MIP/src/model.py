@@ -1,10 +1,10 @@
+import sys
+sys.path.append("./")
+
 import logging
 import math
-import sys
 import time
 from typing import List, Tuple, Union
-
-sys.path.append("./")
 
 import pulp
 
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     solver: SolverMIP = SolverMIP(parser_args["solver"])
     timeout: int = parser_args["timeout"]
     verbose: bool = parser_args["verbose"]
-    save_stats: bool = parser_args["statistics"]
+    test_mode = parser_args["testing"]
 
     # Check if the solver is installed in the user's system
     if not check_mip_solver_exists(solver):
@@ -226,9 +226,9 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 40)
+    # test_instances = (1, 40)
 
-    if save_stats:
+    if test_mode is not None:
         # TODO pass instances through cmd line
         configuration = None
 
@@ -236,6 +236,7 @@ if __name__ == "__main__":
         # configuration = create_configuration_dict()
         # test_instances = [int(input_name[4:])] * len(configuration)
 
+        test_instances = (test_mode[0], test_mode[1])
         compute_tests(
             test_instances,
             model_type,
