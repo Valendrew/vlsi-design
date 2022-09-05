@@ -88,9 +88,7 @@ def configure_mosek_solver(timeout: int):
 
     # https://docs.mosek.com/latest/opt-server/param-groups.html
     options = {
-        # mosek.iparam.num_threads: 8,
-        mosek.dparam.mio_max_time: timeout,
-        mosek.iparam.mio_symmetry_level: 4,
+        mosek.dparam.mio_max_time: timeout
     }
     return pulp.MOSEK(mip=True, msg=solver_verbose, options=options)
 

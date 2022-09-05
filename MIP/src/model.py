@@ -115,6 +115,8 @@ def compute_solution(
     plot_file = format_plot_file(run_type, input_name, model_type)
 
     if solver == SolverMIP.MINIZINC:
+        if model_type == ModelType.ROTATION:
+            raise BaseException("Rotation model has not been implemented")
         mz_solver = SolverMinizinc.CPLEX
         free_search = False
 
@@ -224,7 +226,7 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 20)
+    test_instances = (1, 40)
 
     if save_stats:
         # TODO pass instances through cmd line
