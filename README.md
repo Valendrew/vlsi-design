@@ -17,7 +17,7 @@ A set of problem instances is provided, but assumptions should not be made based
     - [CPLEX Optimizer](https://www.ibm.com/analytics/cplex-optimizer), version 22.1.0
     - [MOSEK](https://www.mosek.com/), version 10.0.18
 - [Configure CPLEX for PULP](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#cplex)
-- Pulp for Python interface
+- PuLP for Python interface
 
 ## Project assignment
 

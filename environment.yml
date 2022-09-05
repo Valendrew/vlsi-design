@@ -4,16 +4,14 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - conda
-  - mosek==10.0.18
-  - pandas
-  - pip
-  - python=3.8
+  - black
   - numpy
+  - pip
   - matplotlib
+  - python=3.8
+  - pandas
+  - mosek
   - pip:
-    - pysmt
-    - black
-    - minizinc[dzn]
-    - z3-solver
+    - pysmt==0.9.5
+    - minizinc[dzn]==0.7.0
     - pulp==2.6.0
