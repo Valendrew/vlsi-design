@@ -12,3 +12,4 @@ __pycache__/
 *.csv
 *.log
 out-*.txt
+compare_*.ipynb
