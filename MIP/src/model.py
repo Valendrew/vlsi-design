@@ -1,4 +1,5 @@
 import logging
+import math
 import sys
 import time
 from typing import List, Tuple, Union
@@ -15,13 +16,12 @@ from utils.mip_utils import (
     check_mip_solver_exists,
     configure_cplex_solver,
     configure_mosek_solver,
-    create_configuration_dict,
     parse_mip_argument,
 )
 from utils.solution_log import print_logging, save_solution
 from utils.smt_utils import extract_input_from_txt
 from utils.plot import plot_solution
-from utils.minizinc_solver import compute_solve_time, run_minizinc
+from utils.minizinc_solver import run_minizinc
 from utils.types import (
     SOLUTION_ADMISSABLE,
     InputMode,
@@ -67,7 +67,7 @@ def run_mip_solver(
         raise BaseException("Model type not available")
 
     if solver == SolverMIP.CPLEX:
-            solver = configure_cplex_solver(timeout, configuration)
+        solver = configure_cplex_solver(timeout, configuration)
     elif solver == SolverMIP.MOSEK:
         solver = configure_mosek_solver(timeout)
     else:
@@ -81,7 +81,7 @@ def run_mip_solver(
         return sol
 
     sol.status = StatusEnum(prob.sol_status)
-    sol.solve_time = compute_solve_time(prob.solutionTime)
+    sol.solve_time = prob.solutionTime
 
     if SOLUTION_ADMISSABLE(sol.status):
         if prob.solutionTime > timeout:
@@ -118,14 +118,35 @@ def compute_solution(
         mz_solver = SolverMinizinc.CPLEX
         free_search = False
 
-        sol = run_minizinc(
-            input_name,
-            run_type,
-            model_type,
-            mz_solver,
-            timeout,
-            free_search,
+        data_file = format_data_file(input_name, InputMode.TXT)
+        W, N, widths, heights = extract_input_from_txt(
+            data_file.rsplit("/", maxsplit=1)[0] + "/{file}",
+            data_file.rsplit("/", maxsplit=1)[1],
         )
+
+        res_timeout = timeout
+        height_opt = max(
+            max(heights), math.ceil(sum([widths[i] * heights[i] for i in range(N)]) / W)
+        )
+        while res_timeout > 0:
+            sol = run_minizinc(
+                input_name,
+                run_type,
+                model_type,
+                mz_solver,
+                res_timeout,
+                free_search,
+                height=height_opt,
+            )
+
+            res_timeout -= sol.solve_time
+            sol.solve_time = timeout - res_timeout
+            if not SOLUTION_ADMISSABLE(sol.status):
+                height_opt += 1
+            else:
+                res_timeout = 0
+                
+
     elif solver == SolverMIP.MOSEK or solver == SolverMIP.CPLEX:
         sol = run_mip_solver(input_name, model_type, solver, timeout, configuration)
 
@@ -162,13 +183,26 @@ def compute_tests(
             statistics_path, sol, configuration[i] if configuration else None
         )
         print(
-            f"- Computed instance {test_iterator[i]}: {sol.status.name}{'in time' + sol.solve_time if SOLUTION_ADMISSABLE[sol.status] else ''}"
+            f"- Computed instance {test_iterator[i]}: {sol.status.name}{f' in time {sol.solve_time}' if SOLUTION_ADMISSABLE(sol.status) else ''}"
         )
         if SOLUTION_ADMISSABLE(sol.status):
             widths = [i[0] for i in sol.circuits]
             heights = [i[0] for i in sol.circuits]
 
-            save_solution(run_type.value, model_type.value, input_name + ".txt", (sol.width, sol.n_circuits, sol.height, widths, heights, sol.coords["x"], sol.coords["y"]))
+            save_solution(
+                run_type.value,
+                model_type.value,
+                input_name + ".txt",
+                (
+                    sol.width,
+                    sol.n_circuits,
+                    sol.height,
+                    widths,
+                    heights,
+                    sol.coords["x"],
+                    sol.coords["y"],
+                ),
+            )
 
 
 if __name__ == "__main__":
@@ -190,7 +224,7 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    test_instances = (1, 40)
+    test_instances = (1, 20)
 
     if save_stats:
         # TODO pass instances through cmd line

@@ -66,7 +66,7 @@ class Solution:
     n_circuits: int
     circuits: List[List[int]]
     height: int
-    solve_time: str
+    solve_time: float
     rotation: List[bool] = None
     coords: Coords
     configuration: List[str] = None

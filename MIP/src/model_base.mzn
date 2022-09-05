@@ -9,11 +9,10 @@ set of int: set_I = 1..N;
 array[set_I] of int: widths = [CIRCUITS[i, 1] | i in set_I];
 array[set_I] of int: heights = [CIRCUITS[i, 2] | i in set_I];
 
-int: max_circuit = arg_max([widths[i] * heights[i] | i in set_I]);
-
 % Variables
 % Lower bound is the minimum height among circuits' ones
-int: l_bound = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in set_I]) / W));
+% int: l_bound = max(max(heights), ceil(sum([(widths[i]*heights[i]) | i in set_I]) / W));
+% int: l_bound;
 % Height
 int: l = l_bound;
 

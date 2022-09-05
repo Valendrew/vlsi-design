@@ -21,6 +21,13 @@ def compute_solve_time(ex_time: float) -> str:
 
     return f"{ex_time:.6f} {magnitude}"
 
+def minizinc_solve_time(result: Result):
+    initTime = result.statistics["initTime"].total_seconds() if hasattr(result.statistics, "initTime") else result.statistics["flatTime"].total_seconds()
+    return (
+        result.statistics["solveTime"].total_seconds() + 
+        initTime
+    )
+
 
 def get_minizinc_solution(
     result: Result, instance: Instance, sol: Solution
@@ -50,12 +57,8 @@ def get_minizinc_solution(
 
     sol.rotation = None if not hasattr(result.solution, "rot") else result.solution.rot
 
-    initTime = result.statistics["initTime"].total_seconds() if hasattr(result.statistics, "initTime") else result.statistics["flatTime"].total_seconds()
-    ex_time = (
-        result.statistics["solveTime"].total_seconds() + 
-        initTime
-    )
-    sol.solve_time = ex_time# compute_solve_time(ex_time)
+    # sol.solve_time = ex_time
+    # compute_solve_time(ex_time)
     return sol
 
 
@@ -66,13 +69,21 @@ def run_minizinc(
     solver: SolverMinizinc = SolverMinizinc.GECODE,
     timeout: int = None,
     free_search=False,
+    height=None
 ) -> Solution:
     data_file = format_data_file(input_name, InputMode.DZN)
     model_file = format_model_file(run_type, model_type)
 
-    model = Model(model_file)
+    if height is not None:
+        model = Model()
+        model.add_string(f"int: l_bound = {height};")
+        model.add_file(model_file)
+    else:
+        model = Model(model_file)
+    
     solver_exec = Solver.lookup(solver.value)
     instance = Instance(solver_exec, model)
+
     instance.add_file(data_file, parse_data=True)
     if timeout:
         td_timeout = timedelta(seconds=timeout)
@@ -91,6 +102,7 @@ def run_minizinc(
     # After the instance has been solved
     sol = Solution()
     sol.input_name = input_name
+    sol.solve_time = minizinc_solve_time(result)
 
     if result.status == Status.ERROR:
         sol.status = StatusEnum.ERROR
