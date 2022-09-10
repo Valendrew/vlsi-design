@@ -3,10 +3,7 @@ sys.path.append("./")
 
 import logging
 import math
-import time
 from typing import List, Tuple, Union
-
-import pulp
 
 from utils.manage_paths import format_data_file, format_plot_file, format_statistic_file
 from utils.manage_statistics import checking_instances, save_statistics
@@ -47,11 +44,7 @@ def run_mip_solver(
 ):
     sol = Solution()
     data_file = format_data_file(input_name, InputMode.TXT)
-    # TODO change to take only data_file
-    W, N, widths, heights = extract_input_from_txt(
-        data_file.rsplit("/", maxsplit=1)[0] + "/{file}",
-        data_file.rsplit("/", maxsplit=1)[1],
-    )
+    W, N, widths, heights = extract_input_from_txt(data_file.rsplit("/", maxsplit=1)[1])
 
     sol.input_name = input_name
     sol.width = W
@@ -121,10 +114,7 @@ def compute_solution(
         free_search = False
 
         data_file = format_data_file(input_name, InputMode.TXT)
-        W, N, widths, heights = extract_input_from_txt(
-            data_file.rsplit("/", maxsplit=1)[0] + "/{file}",
-            data_file.rsplit("/", maxsplit=1)[1],
-        )
+        W, N, widths, heights = extract_input_from_txt(data_file.rsplit("/", maxsplit=1)[1])
 
         res_timeout = timeout
         height_opt = max(
@@ -226,16 +216,9 @@ if __name__ == "__main__":
         logging.error("Timeout out of range")
         sys.exit(2)
 
-    # test_instances = (1, 40)
-
     if test_mode is not None:
-        # TODO pass instances through cmd line
+        
         configuration = None
-
-        # FIXME instances configured differently for testing purpose
-        # configuration = create_configuration_dict()
-        # test_instances = [int(input_name[4:])] * len(configuration)
-
         test_instances = (test_mode[0], test_mode[1])
         compute_tests(
             test_instances,

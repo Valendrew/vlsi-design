@@ -35,9 +35,7 @@ def parse_mip_argument():
     )
     parser.add_argument("-t", "--timeout", default=DEFAULT_TIMEOUT, type=int)
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
-    # TODO merge statistics with instance using append or something similiar
     mode.add_argument("-test", "--testing", type=int, nargs=2, help="Specify the interval of instances to run the solver on.")
-    # parser.add_argument("-st", "--statistics", action="store_true", default=False)
 
     args = parser.parse_args()
     return vars(args)
@@ -62,7 +60,6 @@ def check_mip_admissable_timeout(timeout: int):
 def configure_cplex_solver(timeout: int, configuration: List[str] = None):
     solver_verbose = False
 
-    # FIXME remove log for parallel computing
     # https://www.ibm.com/docs/en/icos/22.1.0?topic=cplex-list-parameters
     if configuration is not None:
         # default to True
@@ -75,7 +72,7 @@ def configure_cplex_solver(timeout: int, configuration: List[str] = None):
         print(f"warmStart: {warmStart} - {options}")
     else:
         # options = []
-        options = ["set preprocessing symmetry 5"]
+        options = ["set preprocessing symmetry 5", "set output clonelog -1"]
 
     return pulp.CPLEX_CMD(
         mip=True,

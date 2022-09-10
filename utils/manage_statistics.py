@@ -6,9 +6,7 @@ from utils.types import SOLUTION_ADMISSABLE, Solution, StatusEnum
 
 
 # Save useful statistics in a csv file
-# TODO: implement a mechanism in order to avoid always appending at the end of the file with the same name
 def save_statistics(statistic_path: str, solution: Solution, configuration=None):
-    # columns = ["instance", "l", "coord_x", "coord_y", "nodes", "failures", "restarts", "variables", "propagations", "solveTime", "nSolutions"]
     columns = [
         "input_name",
         "status",
