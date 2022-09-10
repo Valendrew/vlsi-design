@@ -1,4 +1,4 @@
-name: unibo-cdmo
+name: vlsi-design
 channels:
   - mosek
   - conda-forge

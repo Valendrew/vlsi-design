@@ -1,59 +1,60 @@
-# Combinatorial and Decision Making (CDMO) project work  (AY 2021/2022)
+# VLSI Design
+The project was developed for the "Combinatorial Decision Making and Optimization" course at the Artificial Intelligence master's degree at the University of Bologna.
+## Problem description
 
-The project work involves solving the chosen problem using:
+VLSI (Very Large Scale Integration) refers to the trend of integrating circuits into silicon chips. A typical example is the smartphone.
 
+The modern trend of  shrinking transistor sizes, allowing engineers to fit more and more transistors into the same area of silicon, has pushed the integration of more and more functions of cellphone circuitry into a single silicon die (i.e. plate).
+This enabled  the modern cellphone to mature into a powerful tool that shrank from the size of  a large brick-sized unit to a device small enough to comfortably carry in a pocket  or purse, with a video camera, touchscreen, and other advanced features. 
+
+We considered two variants of the problem. In the first, each circuit must be placed in a fixed orientation with respect to the others. This means that, an n × m circuit cannot be positioned as an m × n circuit in the silicon plate. In the second case, the rotation is allowed, which means that an n × m circuit can be positioned either as it is or as m × n.
+
+<span>
+  <figure style="display:inline">
+    <img src="./SMT/out/base/plots/ins-20.png" width="30%" />
+  </figure>
+</span>
+<span>
+  <figure  style="display:inline">
+    <img src="./SMT/out/rotation/plots/ins-20.png" width="30%" />
+  </figure>
+</span>
+
+Example with the 20-th instance, the solution on the left is without rotation and the one on the right is with rotation allowed.
+
+## Implementation
+
+We developed 3 models with different approaches:
 - Constraint Programming (CP)
-- Propositional SATisfiability (SAT) or Satisfiability Modulo Theories (SMT)
-  - Bonus point for doing both
-- Mixed-Integer Linear Programming (MIP)
+- Satisfiable Modulo Theory (SMT)
+- Linear Programming (LP)
 
-A set of problem instances is provided, but assumptions should not be made based on them.
+ You can find the assignment [here](assignment.pdf), in particular we chose **Problem 1**. 
 
-## MIP solver
+For each technique we implemented the basic version of the model and the one with rotation allowed, the goal is obviously to find the optimal solution for the largest number of instances.
 
-- Requirements
-  - Model: [PuLP](https://github.com/coin-or/pulp), version 2.6.0
-  - Solvers:
-    - [CPLEX Optimizer](https://www.ibm.com/analytics/cplex-optimizer), version 22.1.0
-    - [MOSEK](https://www.mosek.com/), version 10.0.18
-- [Configure CPLEX for PULP](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#cplex)
-- PuLP for Python interface
+You can find more information on how to test the different models in the relative ```<technique>/src ``` directories.
 
-## Project assignment
+## Installation
 
-### CP and SAT
+You can clone this repo on your machine and move to the project directory:
+```shell
+git clone https://github.com/Valendrew/VLSI-Design.git
+cd VLSI-Design
+```
 
-Use MiniZinc and Z3 solvers.
-
-Advices:
-
-1. Start with the problem parameters, decision variables, the main problem constraints and the objective function
-2. Constraint the objective function with tight lower and upper bounds
-3. Consider different SAT encodings to reduce the encoding size
-4. Investigate if there are any implied constraints that one can benefit form
-5. Use global constraints to impose the main problem constraints and the implied constraints in the CP model
-6. Observe if any symmetry can be exploited to improve the CP model and the SAT encoding by adding symmetry breaking constraints. Note that when you enforce multiple symmetry breaking constraints, they should not conflict with each other (i.e., there must be at least one solution satisfying all the symmetry breaking constraints)
-7. Investigate the best way to search for solutions in CP which does not conflict with the symmetry breaking constraints. The symmetry breaking constraints should not conflict with the SAT search either.
-
-### SMT and MIP
-
-Use favourite solvers and languages (excluded MiniZinc)
-
-Bonus point if the problem is encoded with solver-independent languages
-
-- Try different solvers without rewriting the model
-
-A solver can take advantage of a solution computed by another solver
-
-### Final remarks
-
-Solving processes that exceed a time limit of 5 minutes should be aborted
-
-- Ones too difficult to be solve within the time limit can be avoided: it is not necessary to succeed in solving all instances
+Now create a conda environment and activate it:
+```shell
+conda env create -f environment.yml
+conda activate unibo-cdmo
+```
+At this point if there are further steps necessary to run the different solvers you can find more instructions in the specific ```<technique>/src/README.md ``` for each model.
 
 ## Folder structure
-
-- *~/out/*: output files of those instances that could be solved successfully
-  - Output files name with a corrispondence to the related input file
-- *~/src/*: source code
-- *README*: basic instructions for execution
+For any model we used the same structure for the directories, in particular:
+- *<Model\>/src/*: the source code for \<Model\>
+  - *README*: basic instructions for execution
+- *<Model\>/out/[base | rotation]*:
+  - /plot/: the images of the solutions found by the solver.
+  - ins-?.txt, are all the .txt files that contains the solutions added to the input files.
+  - /statistics/: the .csv files that contain information about the different executions.
