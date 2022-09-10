@@ -1,20 +1,15 @@
-from os.path import join
 import sys
 sys.path.append("./")
 
 from utils.smt_utils import run_model, check_smt_parameters
-from utils.types import ModelType
+from utils.types import ModelType, RunType, StatisticMode
+from utils.manage_paths import format_statistic_file
 
-root_path = './SMT'
-data_path = {
-    "dzn": "./vlsi-instances/dzn-instances/{file}",
-    "txt": "./vlsi-instances/txt-instances/{file}",
-}
-statistics_path = join(root_path, "out/{model}/statistics/{file}")
 
+run_type = RunType.SMT 
 
 if __name__ == "__main__":
-    params = check_smt_parameters(data_path['txt'])
+    params = check_smt_parameters()
     solver_name = params['solver_name']
     instance_file = params['instance_val']
     timeout = params['timeout']
@@ -24,12 +19,10 @@ if __name__ == "__main__":
     search_method = params['search']
     logic = "LIA"
 
-    model_type = ModelType.ROTATION.value if rotation else ModelType.BASE.value
+    model_type = ModelType.ROTATION if rotation else ModelType.BASE
     if test_range is not None:
 
-        stat_file = statistics_path.format(model=model_type, 
-                        file=f"{solver_name}_test_{test_range[0]}-{test_range[1]}.csv"
-                    )
+        stat_file = format_statistic_file(run_type, test_range, model_type, StatisticMode.CSV, solver_name)
         solutions = []
 
         for i in range(test_range[0], test_range[1] + 1):
@@ -43,7 +36,8 @@ if __name__ == "__main__":
             if verbose:
                 print(f"Found solution l={el['l']} for instance {el['instance']} in {el['time']} seconds.")
     else:
-        stat_file = statistics_path.format(model=model_type, file=f"{solver_name}_{instance_file[:-4]}.csv")
+        inst_num = int(instance_file[4:-4])
+        stat_file = format_statistic_file(run_type, (inst_num, inst_num), model_type, StatisticMode.CSV, solver_name)
         solution, ex_time = run_model(solver_name, instance_file, timeout, rotation, verbose, logic, search_method, stat_file)
         
         if solution is not None:

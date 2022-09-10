@@ -7,6 +7,6 @@ lenv/
 
 __pycache__/
 
-# Ignore all the csv and png files
+# Ignore the log and other files
 *.log
 compare_*.ipynb

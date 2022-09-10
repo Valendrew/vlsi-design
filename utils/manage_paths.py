@@ -14,7 +14,7 @@ def format_data_file(file: str, mode: InputMode):
     if exists(file_path):
         return file_path
     else:
-        logging.error("The file doesn't exist, provide a valid one")
+        logging.error(f"The file {file_path} doesn't exist, provide a valid one")
         raise FileNotFoundError
 
 
@@ -28,10 +28,10 @@ def format_plot_file(
 
     if solver is not None:
         plot_path = join_path(
-            run_type.value, f"out/{model_type.value}/{solver}/plots/{file}"
+            run_type.value, f"out/{model_type.value}/{solver}/plots/{file}.png"
         )
     else:
-        plot_path = join_path(run_type.value, f"out/{model_type.value}/plots/{file}")
+        plot_path = join_path(run_type.value, f"out/{model_type.value}/plots/{file}.png")
 
     makedirs(plot_path.rsplit("/", maxsplit=1)[0], exist_ok=True)
     return plot_path
@@ -49,7 +49,10 @@ def format_statistic_file(
     stats_ext: StatisticMode = StatisticMode.CSV,
     solver: str = None,
 ):
-    file = f"{min(test_instances)}_{max(test_instances)}"
+    if test_instances[0] == test_instances[1]:
+        file = f"{test_instances[0]}"
+    else:
+        file = f"{min(test_instances)}_{max(test_instances)}"
     
     statistic_path = join_path(run_type.value, f"out/{model_type.value}/statistics")
 

@@ -1,4 +1,3 @@
-from distutils.command.config import config
 import logging
 import sys
 sys.path.append("./")

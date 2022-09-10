@@ -5,26 +5,22 @@ from os.path import exists, join, splitext
 import sys 
 sys.path.append('./')
 
-from utils.types import ModelType, SolverSMT, Solution, StatusEnum
+from utils.types import ModelType, SolverSMT, Solution, StatusEnum, RunType, InputMode
 from utils.plot import plot_cmap
 from utils.solution_log import save_solution
 from utils.manage_statistics import save_statistics
+from utils.manage_paths import format_plot_file, format_data_file
 
 from pysmt.shortcuts import LT, Int, Solver, Equals
 from pysmt.exceptions import SolverReturnedUnknownResultError
 from pysmt.smtlib.parser import SmtLib20Parser
 
-txt_instances = "./vlsi-instances/txt-instances"
-root_path = './SMT'
-data_path = {
-    "dzn": "./vlsi-instances/dzn-instances/{file}",
-    "txt": "./vlsi-instances/txt-instances/{file}",
-}
-plot_path = join(root_path, "out/{model}/plots/{file}")
 
+run_type = RunType.SMT
+input_mode = InputMode.TXT
 
-def extract_input_from_txt(data_path, file_instance):
-    data_file = data_path.format(file=file_instance)
+def extract_input_from_txt(file_instance):
+    data_file = format_data_file(file_instance[:-4], input_mode)
     with open(data_file, 'r') as fin:
         text = [line.rstrip() for line in fin.readlines()]
             
@@ -57,7 +53,7 @@ def parse_solution(data, model_type):
 
 # It returns widths and heights from the txt instance 
 def get_w_and_h_from_txt(file_name):
-    complete_path = join(txt_instances, file_name)
+    complete_path = format_data_file(file_name[:-4], input_mode)
     if exists(complete_path):
         circuits = []
         with open(complete_path) as fin:
@@ -71,20 +67,19 @@ def get_w_and_h_from_txt(file_name):
 
 
 # Check if the file with the weights exists and if it has the correct extension
-def check_file(parser, path, data_path):
-    ext = splitext(path)[-1].lower()
+def check_file(parser, instance):
+    ext = splitext(instance)[-1].lower()
 
     if ext != '.txt' :
         parser.error(f"The file has not the correct extension: {ext} must be .txt")
     else:
-        if exists(data_path.format(file=path)):
-            return path
-        else:
-            parser.error(f"The instance file doesn't exist in the current path: {data_path.format(file=path)}.")
+        # Check the correctness of the path
+        format_data_file(instance[:-4], input_mode)
+        return instance
 
 
 # Check the parameters given to the script
-def check_smt_parameters(data_path):
+def check_smt_parameters():
     p = argparse.ArgumentParser(description="SMT solver for VLSI")
     mode = p.add_mutually_exclusive_group(required=True)
 
@@ -93,7 +88,7 @@ def check_smt_parameters(data_path):
     p.add_argument('-rot', '--rotation', dest='rotation', help='True if you want to use the model that considers rotation',
                     action='store_true')
     mode.add_argument('-ins', '--instance-file', dest='instance_val', help='The file of the instance you want to solve.', 
-                    type=lambda x: check_file(p, x, data_path))
+                    type=lambda x: check_file(p, x))
     p.add_argument('-to', '--timeout', dest='timeout', help='The maximum number of seconds after which the solve is interrupted.', 
                     type=int, default=300)
     p.add_argument('-v', '--verbose', dest='verbose', help='If the function has to print different information about the solve.', 
@@ -169,7 +164,7 @@ def build_SMTLIB_model(W, N, widths, heights, logic="LIA"):
         lines.append(f"(get-value (coord_y{i}))")
     lines.append("(get-value (l))")
     
-    with open(f"{root_path}/src/model.smt2", "w+") as f:
+    with open(f"./{run_type.value}/src/model.smt2", "w+") as f:
         for line in lines:
             f.write(line + '\n')
 
@@ -250,7 +245,7 @@ def build_SMTLIB_model_rot(W, N, widths, heights, logic="LIA"):
         lines.append(f"(get-value (rot{i}))")
     lines.append("(get-value (l))")
     
-    with open(f"{root_path}/src/model_rot.smt2", "w+") as f:
+    with open(f"./{run_type.value}/src/model_rot.smt2", "w+") as f:
         for line in lines:
             f.write(line + '\n')
 
@@ -369,22 +364,22 @@ def low_bound_search(solver, parser, l_low, model_type, model_filename, timeout,
 
 
 def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, search_method, stat_file):
-    W, N, widths, heights = extract_input_from_txt(data_path["txt"], instance_file)
+    W, N, widths, heights = extract_input_from_txt(instance_file)
 
     vprint = print if verbose else lambda *a, **k: None
 
     if rotation:
-        model_type = ModelType.ROTATION.value
+        model_type = ModelType.ROTATION
         model_filename = "model_rot.smt2"
         vprint("Generating the rotation model\n")
         l_low, l_up = build_SMTLIB_model_rot(W, N, widths, heights, logic=logic)
     else:
-        model_type = ModelType.BASE.value
+        model_type = ModelType.BASE
         model_filename = "model.smt2"
         vprint("Generating the base model\n")
         l_low, l_up = build_SMTLIB_model(W, N, widths, heights, logic=logic)
 
-    plot_file = plot_path.format(model=model_type, file=instance_file.split(".")[0])
+    plot_file = format_plot_file(run_type, instance_file, model_type)
     # Set some solution object variables
     solution_obj = Solution()
     solution_obj.input_name=instance_file[:-4]
@@ -406,9 +401,9 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, sea
 
     solver.add_assertion(formula)
     if search_method == "lbound":
-        solution = low_bound_search(solver, parser, l_low, model_type, complete_path_model, timeout, verbose)
+        solution = low_bound_search(solver, parser, l_low, model_type.value, complete_path_model, timeout, verbose)
     else:
-        solution = offline_omt(solver, l_low, l_up, model_type, timeout, verbose)
+        solution = offline_omt(solver, l_low, l_up, model_type.value, timeout, verbose)
 
     if len(solution[0].keys()) != 0:
         l, coord_x, coord_y, rotation = solution[0]['l'], solution[0]['coord_x'], solution[0]['coord_y'],  solution[0]['rotation']
@@ -421,7 +416,7 @@ def run_model(solver_name, instance_file, timeout, rotation, verbose, logic, sea
             W, l, N, get_w_and_h_from_txt(instance_file), {'x': coord_x, 'y': coord_y},
                 plot_file, rotation=rotation, cmap_name="turbo_r"
         )
-        save_solution(root_path, model_type, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
+        save_solution(f"./{run_type.value}", model_type.value, instance_file, (W, N, l, widths, heights, coord_x, coord_y))
         save_statistics(stat_file, solution_obj)
         return solution
     else:
