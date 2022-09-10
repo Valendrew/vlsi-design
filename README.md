@@ -33,7 +33,7 @@ We developed 3 models with different approaches:
 
 For each technique we implemented the basic version of the model and the one with rotation allowed, the goal is obviously to find the optimal solution for the largest number of instances.
 
-You can find more information on how to test the different models in the relative ```<technique>/src ``` directories.
+You can find more information on how to test the different models in the relative ```[model]/src ``` directories.
 
 ## Installation
 
@@ -46,15 +46,15 @@ cd VLSI-Design
 Now create a conda environment and activate it:
 ```shell
 conda env create -f environment.yml
-conda activate unibo-cdmo
+conda activate vlsi-design
 ```
-At this point if there are further steps necessary to run the different solvers you can find more instructions in the specific ```<technique>/src/README.md ``` for each model.
+At this point if there are further steps necessary to run the different solvers you can find more instructions in the specific ```[model]/src/README.md ``` for each model.
 
 ## Folder structure
 For any model we used the same structure for the directories, in particular:
-- *<Model\>/src/*: the source code for \<Model\>
+- *[model]/src/*: the source code for \<Model\>
   - *README*: basic instructions for execution
-- *<Model\>/out/[base | rotation]*:
+- *[model]/out/[base | rotation]*:
   - /plot/: the images of the solutions found by the solver.
   - ins-?.txt, are all the .txt files that contains the solutions added to the input files.
   - /statistics/: the .csv files that contain information about the different executions.

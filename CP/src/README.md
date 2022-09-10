@@ -8,7 +8,7 @@ To install and activate the conda environment:
 
 ```shell
 conda env create -f environment.yml
-conda activate unibo-cdmo
+conda activate vlsi-design
 ```
 
 ## Usage

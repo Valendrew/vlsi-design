@@ -11,7 +11,7 @@ To install and activate the conda environment:
 
 ```shell
 conda env create -f environment.yml
-conda activate unibo-cdmo
+conda activate vlsi-design
 ```
 
 You also need to install [CPLEX Optimizer](https://www.ibm.com/analytics/cplex-optimizer) (v. 22.1.0) and configure the environment variables for [PuLP](https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html#cplex)

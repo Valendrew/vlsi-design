@@ -8,7 +8,7 @@ To install and activate the conda environment:
 
 ```shell
 conda env create -f environment.yml
-conda activate unibo-cdmo
+conda activate vlsi-design
 ```
 
 You also need to install the z3/CVC4 solver on Pysmt, once you installed the conda environment you simply need to run:
