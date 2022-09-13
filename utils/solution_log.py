@@ -4,7 +4,6 @@ FEASIBLE_MSG = "A solution has been found, but not an optimal one"
 OPTIMAL_MSG = "Optimal solution has been found"
 NO_SOLUTION_MSG = "No solution has been found"
 GENERIC_MSG = "Infeasible solution"
-# TODO append specific error
 ERROR_MSG = "Error during execution"
 
 out_path = "{root}/out/{model}/{file}"

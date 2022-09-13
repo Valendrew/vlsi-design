@@ -153,7 +153,7 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                 if widths[i] + widths[j] > W:
                     prob += delta[i][j][0] == 1
                     prob += delta[j][i][0] == 1
-                # TODO test on these constraints
+                # old constraints
                 # if max_circuit == i:
                 #     prob += delta[j][i][1] == 1
                 # elif max_circuit == j:
@@ -167,38 +167,6 @@ def build_pulp_model(W: int, N: int, widths, heights) -> pulp.LpProblem:
                     delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
                     <= 3
                 )
-
-                # TODO old constraints
-                """ if widths[i] + widths[j] > W:
-                    prob += delta[i][j][0] == 0
-                    prob += delta[j][i][0] == 0
-
-                prob += (
-                    coord_x[i] + widths[i]
-                    <= coord_x[j]
-                    + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
-                )
-                prob += (
-                    coord_x[j] + widths[j]
-                    <= coord_x[i]
-                    + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
-                )
-
-                prob += (
-                    coord_y[i] + heights[i]
-                    <= coord_y[j]
-                    + (delta[i][j][0] + delta[j][i][0] + delta[j][i][1]) * l_up
-                )
-                prob += (
-                    coord_y[j] + heights[j]
-                    <= coord_y[i]
-                    + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                )
-
-                prob += (
-                    delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
-                    == 1
-                ) """
 
     return prob
 
@@ -217,15 +185,6 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
     prob += l, "Height of the plate"
 
     # Coordinate variables
-    # c_wh_up = min(widths + heights)
-    # cx_up = int(W - c_wh_up)
-    # cy_up = int(l_up - c_wh_up)
-    # coord_x = pulp.LpVariable.dicts(
-    #     "coord_x", indices=set_N, lowBound=0, upBound=cx_up, cat=pulp.LpInteger
-    # )
-    # coord_y = pulp.LpVariable.dicts(
-    #     "coord_y", indices=set_N, lowBound=0, upBound=cy_up, cat=pulp.LpInteger
-    # )
     coord_x = [
         pulp.LpVariable(
             f"coord_x_{i}",
@@ -279,14 +238,6 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
     for i in set_N:
         for j in set_N:
             if i < j:
-                """prob += coord_x[i] + widths[i] * (1 - rotation[i]) + heights[i] * rotation[i] <= coord_x[j] + (1 - delta[i][j][0]) * W
-                prob += coord_x[j] + widths[j] * (1 - rotation[j]) + heights[j] * rotation[j] <= coord_x[i] + (1 - delta[j][i][0]) * W
-                prob += (
-                    coord_y[i] + heights[i] * (1 - rotation[i]) + widths[i] * rotation[i] <= coord_y[j] + (1 - delta[i][j][1]) * l_up
-                )
-                prob += (
-                    coord_y[j] + heights[j] * (1 - rotation[j]) + widths[j] * rotation[j] <= coord_y[i] + (1 - delta[j][i][1]) * l_up
-                )"""
                 if all(
                     [
                         (u + v) > W
@@ -327,42 +278,6 @@ def build_pulp_rotation_model(W: int, N: int, widths, heights) -> pulp.LpProblem
                     delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
                     <= 3
                 )
-
-                # OLD CONSTRAINTS
-                """ prob += (
-                    coord_x[i]
-                    + widths[i] * (1 - rotation[i])
-                    + heights[i] * rotation[i]
-                    <= coord_x[j]
-                    + (delta[j][i][0] + delta[i][j][1] + delta[j][i][1]) * W
-                )
-                prob += (
-                    coord_x[j]
-                    + widths[j] * (1 - rotation[j])
-                    + heights[j] * rotation[j]
-                    <= coord_x[i]
-                    + (delta[i][j][0] + delta[i][j][1] + delta[j][i][1]) * W
-                )
-
-                prob += (
-                    coord_y[i]
-                    + heights[i] * (1 - rotation[i])
-                    + widths[i] * rotation[i]
-                    <= coord_y[j]
-                    + (delta[i][j][0] + delta[j][i][0] + delta[j][i][1]) * l_up
-                )
-                prob += (
-                    coord_y[j]
-                    + heights[j] * (1 - rotation[j])
-                    + widths[j] * rotation[j]
-                    <= coord_y[i]
-                    + (delta[i][j][0] + delta[j][i][0] + delta[i][j][1]) * l_up
-                )
-
-                prob += (
-                    delta[i][j][0] + delta[j][i][0] + delta[i][j][1] + delta[j][i][1]
-                    == 1
-                ) """
 
     max_circuit = np.argmax(np.asarray(widths) * np.asarray(heights))
     prob += coord_x[max_circuit] == 0, "Max circuit in x-0"
