@@ -14,6 +14,7 @@ We considered two variants of the problem. In the first, each circuit must be pl
     <img src="./SMT/out/base/plots/ins-20.png" width="30%" />
   </figure>
 </span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <span>
   <figure  style="display:inline">
     <img src="./SMT/out/rotation/plots/ins-20.png" width="30%" />
