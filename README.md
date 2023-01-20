@@ -59,3 +59,8 @@ For any model we used the same structure for the directories, in particular:
   - /plot/: the images of the solutions found by the solver.
   - ins-?.txt, are all the .txt files that contains the solutions added to the input files.
   - /statistics/: the .csv files that contain information about the different executions.
+  
+## Authors
+The project has been implemented by:
+- *[Daniele Morotti](https://github.com/DanieleMorotti)*
+- *[Andrea Valente](https://github.com/Valendrew)*. 
